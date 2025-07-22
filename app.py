@@ -7,14 +7,25 @@ app = Flask(__name__)
 
 def get_db_connection():
     """Get database connection using Railway's DATABASE_URL"""
+    database_url = os.getenv('DATABASE_URL')
+    print(f"DATABASE_URL environment variable: {database_url}")
+    
+    if not database_url:
+        print("ERROR: DATABASE_URL environment variable is not set!")
+        return None
+        
     try:
+        print("Attempting to connect to database...")
         conn = psycopg2.connect(
-            os.getenv('DATABASE_URL'),
-            cursor_factory=RealDictCursor
+            database_url,
+            cursor_factory=RealDictCursor,
+            connect_timeout=10
         )
+        print("Database connection successful!")
         return conn
     except Exception as e:
         print(f"Database connection error: {e}")
+        print(f"Error type: {type(e)}")
         return None
 
 @app.route('/')
