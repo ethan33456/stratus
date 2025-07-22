@@ -155,27 +155,83 @@ def get_location_coords(city, state=None, country='US'):
     except Exception as e:
         return None, f"Geocoding error: {str(e)}"
 
-def fetch_weather_forecast(lat, lon):
-    """Fetch 8-day weather forecast from OpenWeatherMap"""
+def fetch_current_weather(lat, lon):
+    """Fetch current weather from OpenWeatherMap"""
     api_key = os.getenv('OPENWEATHER_API_KEY')
     if not api_key:
         return None, "OpenWeatherMap API key not configured"
     
-    # Use One Call API 3.0 for 8-day forecast
-    weather_url = f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&exclude=minutely,alerts&appid={api_key}&units=imperial"
+    # Use Current Weather API (free tier)
+    weather_url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=imperial"
     
     try:
         response = requests.get(weather_url, timeout=10)
         response.raise_for_status()
         data = response.json()
+        return data, None
         
-        # Format the forecast data
+    except Exception as e:
+        return None, f"Current weather API error: {str(e)}"
+
+def fetch_weather_forecast(lat, lon):
+    """Fetch 5-day weather forecast from OpenWeatherMap"""
+    api_key = os.getenv('OPENWEATHER_API_KEY')
+    if not api_key:
+        return None, "OpenWeatherMap API key not configured"
+    
+    # Use 5 Day / 3 Hour Forecast API (free tier)
+    forecast_url = f"https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={api_key}&units=imperial"
+    
+    try:
+        response = requests.get(forecast_url, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        # Format the forecast data to mimic daily forecasts
+        daily_forecasts = []
+        current_day = None
+        day_data = {}
+        
+        for item in data['list']:
+            date = datetime.fromtimestamp(item['dt']).date()
+            
+            if current_day != date:
+                # Save previous day if exists
+                if day_data:
+                    daily_forecasts.append(day_data)
+                
+                # Start new day
+                current_day = date
+                day_data = {
+                    'dt': item['dt'],
+                    'date': date.isoformat(),
+                    'weather': item['weather'],
+                    'temp': {
+                        'min': item['main']['temp'],
+                        'max': item['main']['temp'],
+                        'day': item['main']['temp']
+                    },
+                    'humidity': item['main']['humidity'],
+                    'pressure': item['main']['pressure'],
+                    'wind_speed': item['wind']['speed'],
+                    'wind_deg': item['wind'].get('deg', 0),
+                    'clouds': item['clouds']['all'],
+                    'pop': item.get('pop', 0) * 100  # Convert to percentage
+                }
+            else:
+                # Update min/max for the day
+                day_data['temp']['min'] = min(day_data['temp']['min'], item['main']['temp'])
+                day_data['temp']['max'] = max(day_data['temp']['max'], item['main']['temp'])
+        
+        # Add the last day
+        if day_data:
+            daily_forecasts.append(day_data)
+        
+        # Format the complete forecast data
         formatted_forecast = {
             'location': {'lat': lat, 'lon': lon},
-            'current': data['current'],
-            'daily': data['daily'][:8],  # 8-day forecast
-            'hourly': data['hourly'][:24],  # 24-hour forecast
-            'timezone': data['timezone'],
+            'daily': daily_forecasts[:5],  # 5-day forecast
+            'timezone': 'America/Chicago',  # Default timezone
             'fetched_at': datetime.now().isoformat()
         }
         
@@ -186,25 +242,34 @@ def fetch_weather_forecast(lat, lon):
 
 @app.route('/api/weather/stlouis')
 def get_stlouis_weather():
-    """Get 8-day weather forecast for St. Louis, MO"""
+    """Get current weather and 5-day forecast for St. Louis, MO"""
     try:
         # Get St. Louis coordinates
         location, error = get_location_coords("St. Louis", "MO", "US")
         if error:
             return jsonify({'error': error}), 400
+        
+        # Fetch current weather
+        current_weather, error = fetch_current_weather(location['lat'], location['lon'])
+        if error:
+            return jsonify({'error': error}), 500
             
         # Fetch weather forecast
         forecast, error = fetch_weather_forecast(location['lat'], location['lon'])
         if error:
             return jsonify({'error': error}), 500
-            
-        # Add location info to forecast
-        forecast['location_info'] = location
+        
+        # Combine current weather and forecast
+        combined_data = {
+            'location': location,
+            'current': current_weather,
+            'forecast': forecast,
+            'fetched_at': datetime.now().isoformat()
+        }
         
         return jsonify({
             'success': True,
-            'location': location,
-            'forecast': forecast
+            'data': combined_data
         })
         
     except Exception as e:
@@ -385,7 +450,7 @@ def weather_dashboard():
     <div class="container">
         <div class="header">
             <h1>🌤️ Stratus Weather</h1>
-            <p>8-Day Forecast for St. Louis, Missouri</p>
+            <p>5-Day Forecast for St. Louis, Missouri</p>
         </div>
         
         <div id="loading" class="loading">
@@ -422,8 +487,8 @@ def weather_dashboard():
                 </div>
             </div>
             
-            <!-- 8-Day Forecast -->
-            <h2 class="section-title">📅 8-Day Forecast</h2>
+            <!-- 5-Day Forecast -->
+            <h2 class="section-title">📅 5-Day Forecast</h2>
             <div id="forecast-grid" class="forecast-grid">
                 <!-- Forecast cards will be inserted here -->
             </div>
@@ -478,17 +543,17 @@ def weather_dashboard():
         }
         
         function displayWeather(data) {
-            const forecast = data.forecast;
-            const current = forecast.current;
-            const daily = forecast.daily;
+            const weatherData = data.data;
+            const current = weatherData.current;
+            const daily = weatherData.forecast.daily;
             
             // Update current weather
-            document.getElementById('current-temp').textContent = Math.round(current.temp) + '°F';
+            document.getElementById('current-temp').textContent = Math.round(current.main.temp) + '°F';
             document.getElementById('current-desc').textContent = current.weather[0].description;
-            document.getElementById('feels-like').textContent = Math.round(current.feels_like) + '°F';
-            document.getElementById('humidity').textContent = current.humidity + '%';
-            document.getElementById('wind-speed').textContent = Math.round(current.wind_speed) + ' mph';
-            document.getElementById('uv-index').textContent = Math.round(current.uvi || 0);
+            document.getElementById('feels-like').textContent = Math.round(current.main.feels_like) + '°F';
+            document.getElementById('humidity').textContent = current.main.humidity + '%';
+            document.getElementById('wind-speed').textContent = Math.round(current.wind.speed) + ' mph';
+            document.getElementById('uv-index').textContent = 'N/A'; // UV index not available in current weather API
             
             // Create forecast cards
             const forecastGrid = document.getElementById('forecast-grid');
