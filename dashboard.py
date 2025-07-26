@@ -168,6 +168,24 @@ def weather_dashboard():
             margin-bottom: 15px;
             text-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
+        .search-bar {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            display: flex;
+            gap: 5px;
+        }
+
+        .search-bar input[type="text"] {
+            padding: 6px 10px;
+            border-radius: 5px;
+            border: none;
+            font-size: 1rem;
+        }
+
+        .search-bar button:hover {
+            background: #74b9ff;
+        }
     </style>
 </head>
 <body>
@@ -175,6 +193,9 @@ def weather_dashboard():
         <div class="header">
             <h1>🌤️ Stratus Weather</h1>
             <p>5-Day Forecast for St. Louis, Missouri</p>
+            <form id="search-form" class="search-bar" onsubmit="searchCity(event)">
+            <input type="text" id="city-input" placeholder="Search city" required>
+            </form>
         </div>
         
         <div id="loading" class="loading">
