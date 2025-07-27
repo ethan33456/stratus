@@ -191,7 +191,7 @@ def weather_dashboard():
 <body>
     <div class="container">
         <div class="header">
-            <h1>🌤️ Stratus Weather</h1>
+            <h1>Stratus Weather</h1>
             <p>5-Day Forecast for St. Louis, Missouri</p>
             <form id="search-form" class="search-bar" onsubmit="searchCity(event)">
             <input type="text" id="city-input" placeholder="Search city" required>
