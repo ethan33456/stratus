@@ -248,9 +248,14 @@ def weather_dashboard():
             const tomorrow = new Date(today);
             tomorrow.setDate(tomorrow.getDate() + 1);
             
-            if (date.toDateString() === today.toDateString()) {
+            // Get just the date part (YYYY-MM-DD) for comparison
+            const dateStr = date.toISOString().split('T')[0];
+            const todayStr = today.toISOString().split('T')[0];
+            const tomorrowStr = tomorrow.toISOString().split('T')[0];
+            
+            if (dateStr === todayStr) {
                 return 'Today';
-            } else if (date.toDateString() === tomorrow.toDateString()) {
+            } else if (dateStr === tomorrowStr) {
                 return 'Tomorrow';
             } else {
                 return date.toLocaleDateString('en-US', { weekday: 'short' });
