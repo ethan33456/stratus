@@ -245,18 +245,13 @@ def weather_dashboard():
         function getDayName(timestamp) {
             const date = new Date(timestamp * 1000);
             const today = new Date();
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
             
             // Get just the date part (YYYY-MM-DD) for comparison
             const dateStr = date.toISOString().split('T')[0];
             const todayStr = today.toISOString().split('T')[0];
-            const tomorrowStr = tomorrow.toISOString().split('T')[0];
             
             if (dateStr === todayStr) {
                 return 'Today';
-            } else if (dateStr === tomorrowStr) {
-                return 'Tomorrow';
             } else {
                 return date.toLocaleDateString('en-US', { weekday: 'short' });
             }
