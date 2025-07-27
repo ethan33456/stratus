@@ -242,7 +242,7 @@ def weather_dashboard():
 
     <script>
         // Function to format day names
-        function getDayName(timestamp) {
+        function getDayName(timestamp, index) {
             const date = new Date(timestamp * 1000);
             const today = new Date();
             
@@ -253,7 +253,11 @@ def weather_dashboard():
             if (dateStr === todayStr) {
                 return 'Today';
             } else {
-                return date.toLocaleDateString('en-US', { weekday: 'short' });
+                // For subsequent days, calculate the correct day name based on index
+                const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                const todayIndex = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+                const targetIndex = (todayIndex + index) % 7;
+                return daysOfWeek[targetIndex];
             }
         }
         
@@ -309,7 +313,7 @@ def weather_dashboard():
                 dayCard.className = 'day-card';
                 
                 dayCard.innerHTML = `
-                    <div class="day-name">${getDayName(day.dt)}</div>
+                    <div class="day-name">${getDayName(day.dt, index)}</div>
                     <img src="${getIconUrl(day.weather[0].icon)}" alt="${day.weather[0].description}" class="day-icon">
                     <div class="day-temps">
                         <div class="high-temp">${Math.round(day.temp.max)}°</div>
