@@ -235,7 +235,9 @@ def fetch_weather_data(lat, lon):
                     'max': day['temp']['max']
                 },
                 'humidity': day['humidity'],
-                'weather': day['weather']
+                'weather': day['weather'],
+                'pop': day.get('pop', 0),  # Probability of precipitation
+                'uvi': day.get('uvi', 0)   # UV index
             })
         
         forecast_data = {

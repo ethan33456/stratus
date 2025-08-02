@@ -191,8 +191,15 @@ def weather_dashboard():
 
         .forecast-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
+            max-width: 100%;
+        }
+
+        @media (min-width: 900px) {
+            .forecast-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
         }
 
         .forecast-day {
@@ -678,29 +685,37 @@ def weather_dashboard():
                 </div>
             `;
             
-            // Display weather details in the second card
-            const weatherDetailsContent = document.getElementById('weather-details-content');
-            weatherDetailsContent.innerHTML = `
-                <h3 style="text-align: center; margin-bottom: 20px; color: #e8e8e8;">Weather Details</h3>
-                <div class="weather-details">
-                    <div class="detail-item">
-                        <div class="detail-label">Visibility</div>
-                        <div class="detail-value">${(current.visibility / 1000).toFixed(1)} km</div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-label">Cloud Cover</div>
-                        <div class="detail-value">${current.clouds?.all || 0}%</div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-label">Sunrise</div>
-                        <div class="detail-value">${new Date(current.sys.sunrise * 1000).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'})}</div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-label">Sunset</div>
-                        <div class="detail-value">${new Date(current.sys.sunset * 1000).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'})}</div>
-                    </div>
-                </div>
-            `;
+                         // Display weather details in the second card
+             const weatherDetailsContent = document.getElementById('weather-details-content');
+             weatherDetailsContent.innerHTML = `
+                 <h3 style="text-align: center; margin-bottom: 20px; color: #e8e8e8;">Weather Details</h3>
+                 <div class="weather-details">
+                     <div class="detail-item">
+                         <div class="detail-label">Visibility</div>
+                         <div class="detail-value">${(current.visibility / 1000).toFixed(1)} km</div>
+                     </div>
+                     <div class="detail-item">
+                         <div class="detail-label">Cloud Cover</div>
+                         <div class="detail-value">${current.clouds?.all || 0}%</div>
+                     </div>
+                     <div class="detail-item">
+                         <div class="detail-label">Chance of Rain</div>
+                         <div class="detail-value">${Math.round((forecast.daily[0]?.pop || 0) * 100)}%</div>
+                     </div>
+                     <div class="detail-item">
+                         <div class="detail-label">UV Index</div>
+                         <div class="detail-value">${(forecast.daily[0]?.uvi || 0).toFixed(1)}</div>
+                     </div>
+                     <div class="detail-item">
+                         <div class="detail-label">Sunrise</div>
+                         <div class="detail-value">${new Date(current.sys.sunrise * 1000).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'})}</div>
+                     </div>
+                     <div class="detail-item">
+                         <div class="detail-label">Sunset</div>
+                         <div class="detail-value">${new Date(current.sys.sunset * 1000).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'})}</div>
+                     </div>
+                 </div>
+             `;
             
             // Display forecast (8 days)
             const forecastContent = document.getElementById('forecast-content');
