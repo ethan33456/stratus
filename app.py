@@ -187,79 +187,69 @@ def get_location_from_coords(lat, lon):
     except Exception as e:
         return None, f"Error getting location: {str(e)}"
 
-def fetch_current_weather(lat, lon):
-    """Fetch current weather data from OpenWeatherMap API"""
+def fetch_weather_data(lat, lon):
+    """Fetch all weather data using One Call API 3.0"""
     try:
         api_key = os.getenv('OPENWEATHER_API_KEY')
         if not api_key:
             return None, "OpenWeatherMap API key not found"
         
-        url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=imperial"
-        
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        
-        return response.json(), None
-        
-    except requests.exceptions.RequestException as e:
-        return None, f"Network error: {str(e)}"
-    except Exception as e:
-        return None, f"Error fetching current weather: {str(e)}"
-
-def fetch_weather_forecast(lat, lon):
-    """Fetch 5-day weather forecast from OpenWeatherMap API"""
-    try:
-        api_key = os.getenv('OPENWEATHER_API_KEY')
-        if not api_key:
-            return None, "OpenWeatherMap API key not found"
-        
-        url = f"https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={api_key}&units=imperial"
+        url = f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&appid={api_key}&units=imperial&exclude=minutely"
         
         response = requests.get(url, timeout=10)
         response.raise_for_status()
         
         data = response.json()
         
-        # Process forecast data to get daily forecasts
+        # Process the data to match our expected format
+        current_weather = {
+            'main': {
+                'temp': data['current']['temp'],
+                'feels_like': data['current']['feels_like'],
+                'humidity': data['current']['humidity'],
+                'pressure': data['current']['pressure']
+            },
+            'weather': data['current']['weather'],
+            'wind': {
+                'speed': data['current']['wind_speed']
+            },
+            'visibility': data['current'].get('visibility', 10000),
+            'clouds': {
+                'all': data['current'].get('clouds', 0)
+            },
+            'sys': {
+                'sunrise': data['current']['sunrise'],
+                'sunset': data['current']['sunset']
+            }
+        }
+        
+        # Process daily forecast (8 days)
         daily_forecasts = []
-        current_date = None
-        daily_data = {}
+        for day in data['daily'][:8]:  # Get 8 days
+            daily_forecasts.append({
+                'dt': day['dt'],
+                'temp': {
+                    'day': day['temp']['day'],
+                    'min': day['temp']['min'],
+                    'max': day['temp']['max']
+                },
+                'humidity': day['humidity'],
+                'weather': day['weather']
+            })
         
-        for item in data.get('list', []):
-            date = datetime.fromtimestamp(item['dt']).strftime('%Y-%m-%d')
-            
-            if date != current_date:
-                if current_date and daily_data:
-                    daily_forecasts.append(daily_data)
-                
-                current_date = date
-                daily_data = {
-                    'dt': item['dt'],
-                    'temp': {
-                        'day': item['main']['temp'],
-                        'min': item['main']['temp_min'],
-                        'max': item['main']['temp_max']
-                    },
-                    'humidity': item['main']['humidity'],
-                    'weather': item['weather']
-                }
-            else:
-                # Update min/max temperatures for the same day
-                daily_data['temp']['min'] = min(daily_data['temp']['min'], item['main']['temp_min'])
-                daily_data['temp']['max'] = max(daily_data['temp']['max'], item['main']['temp_max'])
-        
-        # Add the last day
-        if daily_data:
-            daily_forecasts.append(daily_data)
+        forecast_data = {
+            'daily': daily_forecasts
+        }
         
         return {
-            'daily': daily_forecasts[:5]  # Return 5 days
+            'current': current_weather,
+            'forecast': forecast_data
         }, None
         
     except requests.exceptions.RequestException as e:
         return None, f"Network error: {str(e)}"
     except Exception as e:
-        return None, f"Error fetching forecast: {str(e)}"
+        return None, f"Error fetching weather data: {str(e)}"
 
 @app.route('/api/weather/coords')
 def get_weather_by_coords():
@@ -286,20 +276,14 @@ def get_weather_by_coords():
             }
         
         # Fetch current weather
-        current_weather, error = fetch_current_weather(lat, lon)
+        current_weather, error = fetch_weather_data(lat, lon)
         if error:
             return jsonify({'error': error}), 500
             
-        # Fetch weather forecast
-        forecast, error = fetch_weather_forecast(lat, lon)
-        if error:
-            return jsonify({'error': error}), 500
-        
         # Combine current weather and forecast
         combined_data = {
             'location': location,
             'current': current_weather,
-            'forecast': forecast,
             'fetched_at': datetime.now().isoformat()
         }
         
@@ -378,20 +362,14 @@ def get_weather_by_location():
             }
         
         # Fetch current weather
-        current_weather, error = fetch_current_weather(lat, lon)
+        current_weather, error = fetch_weather_data(lat, lon)
         if error:
             return jsonify({'error': error}), 500
             
-        # Fetch weather forecast
-        forecast, error = fetch_weather_forecast(lat, lon)
-        if error:
-            return jsonify({'error': error}), 500
-        
         # Combine current weather and forecast
         combined_data = {
             'location': location,
             'current': current_weather,
-            'forecast': forecast,
             'fetched_at': datetime.now().isoformat()
         }
         
@@ -419,20 +397,14 @@ def get_weather_by_search():
             return jsonify({'error': error}), 400
         
         # Fetch current weather
-        current_weather, error = fetch_current_weather(location['lat'], location['lon'])
+        current_weather, error = fetch_weather_data(location['lat'], location['lon'])
         if error:
             return jsonify({'error': error}), 500
             
-        # Fetch weather forecast
-        forecast, error = fetch_weather_forecast(location['lat'], location['lon'])
-        if error:
-            return jsonify({'error': error}), 500
-        
         # Combine current weather and forecast
         combined_data = {
             'location': location,
             'current': current_weather,
-            'forecast': forecast,
             'fetched_at': datetime.now().isoformat()
         }
         
@@ -489,7 +461,7 @@ def analyze_weather_with_ai():
         
         # Get weather data for target location
         print(f"Fetching current weather for target location...")
-        current_weather, error = fetch_current_weather(target_lat, target_lon)
+        current_weather, error = fetch_weather_data(target_lat, target_lon)
         if error:
             print(f"Current weather error: {error}")
             return jsonify({'error': error}), 500
@@ -592,20 +564,14 @@ def get_stlouis_weather():
             return jsonify({'error': error}), 400
         
         # Fetch current weather
-        current_weather, error = fetch_current_weather(location['lat'], location['lon'])
+        current_weather, error = fetch_weather_data(location['lat'], location['lon'])
         if error:
             return jsonify({'error': error}), 500
             
-        # Fetch weather forecast
-        forecast, error = fetch_weather_forecast(location['lat'], location['lon'])
-        if error:
-            return jsonify({'error': error}), 500
-        
         # Combine current weather and forecast
         combined_data = {
             'location': location,
             'current': current_weather,
-            'forecast': forecast,
             'fetched_at': datetime.now().isoformat()
         }
         

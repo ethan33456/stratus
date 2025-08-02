@@ -18,7 +18,7 @@ def weather_dashboard():
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            background: linear-gradient(135deg, #131333 0%, #030712 50%, #233449 100%)
             min-height: 100vh;
             color: #e8e8e8;
         }
@@ -38,7 +38,6 @@ def weather_dashboard():
         .header h1 {
             font-size: 2.5rem;
             margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
             background: linear-gradient(45deg, #fff, #fff);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -59,12 +58,14 @@ def weather_dashboard():
             box-shadow: 0 8px 32px rgba(0,0,0,0.3);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 99999;
+            position: relative;
+            margin-bottom: 15px;
         }
 
         .search-form {
             display: flex;
             gap: 10px;
-            margin-bottom: 15px;
         }
 
         .search-input {
@@ -190,8 +191,8 @@ def weather_dashboard():
 
         .forecast-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
         }
 
         .forecast-day {
@@ -435,7 +436,7 @@ def weather_dashboard():
 
         <div class="forecast-container">
             <div class="forecast-header">
-                <h3>5-Day Forecast</h3>
+                <h3>8-Day Forecast</h3>
                 <p id="location-display">Detecting your location...</p>
             </div>
             <div id="forecast-content">
@@ -461,7 +462,7 @@ def weather_dashboard():
         </div>
 
         <div class="ai-insights">
-            <h3>🤖 AI Weather Insights</h3>
+            <h3>AI Weather Insights</h3>
             <div id="ai-content">
                 <div class="ai-loading">
                     <div class="loading-spinner"></div>
@@ -701,14 +702,13 @@ def weather_dashboard():
                 </div>
             `;
             
-            // Display forecast
+            // Display forecast (8 days)
             const forecastContent = document.getElementById('forecast-content');
             if (forecast && forecast.daily) {
                 forecastContent.innerHTML = `
                     <div class="forecast-grid">
                         ${forecast.daily.map((day, index) => {
-                            const date = new Date(day.dt * 1000);
-                            // Get the day name based on the actual date, not just the timestamp
+                            // Get the day name based on the actual date
                             const today = new Date();
                             const forecastDate = new Date(today);
                             forecastDate.setDate(today.getDate() + index);
@@ -785,7 +785,7 @@ def weather_dashboard():
             aiContent.innerHTML = `
                 <div class="insights-grid">
                     <div class="insight-section">
-                        <h4>⚠️ Location Context</h4>
+                        <h4>Location Context</h4>
                         <ul class="insight-list">
                             ${aiAnalysis.context_warnings && aiAnalysis.context_warnings.length > 0 
                                 ? aiAnalysis.context_warnings.map(warning => `<li>${warning}</li>`).join('')
@@ -795,7 +795,7 @@ def weather_dashboard():
                     </div>
                     
                     <div class="insight-section">
-                        <h4>💡 Smart Suggestions</h4>
+                        <h4>Smart Suggestions</h4>
                         <ul class="insight-list">
                             ${Array.isArray(aiAnalysis.suggestions) && aiAnalysis.suggestions.length > 0
                                 ? aiAnalysis.suggestions.map(suggestion => `<li>${suggestion}</li>`).join('')
@@ -805,7 +805,7 @@ def weather_dashboard():
                     </div>
                     
                     <div class="insight-section">
-                        <h4>🎯 Fun Facts</h4>
+                        <h4>Fun Facts</h4>
                         <ul class="insight-list">
                             ${Array.isArray(aiAnalysis.fun_facts) && aiAnalysis.fun_facts.length > 0
                                 ? aiAnalysis.fun_facts.map(fact => `<li>${fact}</li>`).join('')
