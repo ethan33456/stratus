@@ -192,14 +192,14 @@ def weather_dashboard():
     <div class="container">
         <div class="header">
             <h1>Stratus Weather</h1>
-            <p>5-Day Forecast for St. Louis, Missouri</p>
+            <p id="location-display">Detecting your location...</p>
             <form id="search-form" class="search-bar" onsubmit="searchCity(event)">
             <input type="text" id="city-input" placeholder="Search city" required>
             </form>
         </div>
         
         <div id="loading" class="loading">
-            ⏳ Loading weather data...
+            <div id="loading-message">⏳ Detecting your location...</div>
         </div>
         
         <div id="error" class="error" style="display: none;"></div>
@@ -266,10 +266,21 @@ def weather_dashboard():
             return `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
         }
         
-        // Load weather data
+        // Get user's location and load weather data
         async function loadWeather() {
             try {
-                const response = await fetch('/api/weather/stlouis');
+                // Update loading message
+                document.getElementById('loading-message').textContent = '⏳ Detecting your location...';
+                
+                // Try to get user's location
+                const position = await getCurrentPosition();
+                const { latitude, longitude } = position.coords;
+                
+                // Update loading message
+                document.getElementById('loading-message').textContent = '⏳ Loading weather data...';
+                
+                // Load weather for user's location
+                const response = await fetch(`/api/weather/coords?lat=${latitude}&lon=${longitude}`);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -285,16 +296,78 @@ def weather_dashboard():
                 
             } catch (error) {
                 console.error('Weather loading error:', error);
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('error').style.display = 'block';
-                document.getElementById('error').textContent = `Error: ${error.message}`;
+                
+                // If location detection fails, fall back to St. Louis
+                try {
+                    console.log('Falling back to St. Louis weather...');
+                    document.getElementById('loading-message').textContent = '⏳ Loading St. Louis weather...';
+                    const fallbackResponse = await fetch('/api/weather/stlouis');
+                    
+                    if (!fallbackResponse.ok) {
+                        throw new Error(`HTTP ${fallbackResponse.status}: ${fallbackResponse.statusText}`);
+                    }
+                    
+                    const fallbackData = await fallbackResponse.json();
+                    
+                    if (!fallbackData.success) {
+                        throw new Error(fallbackData.error || 'Failed to load fallback weather data');
+                    }
+                    
+                    displayWeather(fallbackData);
+                    
+                } catch (fallbackError) {
+                    console.error('Fallback weather loading error:', fallbackError);
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('error').style.display = 'block';
+                    document.getElementById('error').textContent = `Error: ${fallbackError.message}`;
+                }
             }
+        }
+        
+        // Get user's current position
+        function getCurrentPosition() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject(new Error('Geolocation is not supported by this browser'));
+                    return;
+                }
+                
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        resolve(position);
+                    },
+                    (error) => {
+                        reject(new Error('Unable to get your location'));
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 300000 // 5 minutes
+                    }
+                );
+            });
         }
         
         function displayWeather(data) {
             const weatherData = data.data;
             const current = weatherData.current;
             const daily = weatherData.forecast.daily;
+            const location = weatherData.location;
+            
+            // Update location display
+            const locationDisplay = document.getElementById('location-display');
+            if (location && location.name) {
+                let locationText = `5-Day Forecast for ${location.name}`;
+                if (location.state) {
+                    locationText += `, ${location.state}`;
+                }
+                if (location.country) {
+                    locationText += `, ${location.country}`;
+                }
+                locationDisplay.textContent = locationText;
+            } else {
+                locationDisplay.textContent = '5-Day Forecast for Your Location';
+            }
             
             // Update current weather
             document.getElementById('current-temp').textContent = Math.round(current.main.temp) + '°F';

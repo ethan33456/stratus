@@ -161,6 +161,34 @@ def get_location_coords(city, state=None, country='US'):
     except Exception as e:
         return None, f"Geocoding error: {str(e)}"
 
+def get_location_from_coords(lat, lon):
+    """Get location name from coordinates using OpenWeatherMap Reverse Geocoding API"""
+    api_key = os.getenv('OPENWEATHER_API_KEY')
+    if not api_key:
+        return None, "OpenWeatherMap API key not configured"
+    
+    reverse_geocoding_url = f"http://api.openweathermap.org/geo/1.0/reverse?lat={lat}&lon={lon}&limit=1&appid={api_key}"
+    
+    try:
+        response = requests.get(reverse_geocoding_url, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        if not data:
+            return None, f"Location not found for coordinates ({lat}, {lon})"
+            
+        location_data = data[0]
+        return {
+            'lat': lat,
+            'lon': lon,
+            'name': location_data['name'],
+            'state': location_data.get('state', ''),
+            'country': location_data['country']
+        }, None
+        
+    except Exception as e:
+        return None, f"Reverse geocoding error: {str(e)}"
+
 def fetch_current_weather(lat, lon):
     """Fetch current weather from OpenWeatherMap"""
     api_key = os.getenv('OPENWEATHER_API_KEY')
@@ -245,6 +273,63 @@ def fetch_weather_forecast(lat, lon):
         
     except Exception as e:
         return None, f"Weather API error: {str(e)}"
+
+@app.route('/api/weather/coords')
+def get_weather_by_coords():
+    """Get current weather and 5-day forecast for coordinates"""
+    try:
+        from flask import request
+        
+        # Get coordinates from query parameters
+        lat = request.args.get('lat')
+        lon = request.args.get('lon')
+        
+        if not lat or not lon:
+            return jsonify({'error': 'Latitude and longitude are required'}), 400
+        
+        try:
+            lat = float(lat)
+            lon = float(lon)
+        except ValueError:
+            return jsonify({'error': 'Invalid coordinates'}), 400
+        
+        # Get location name from coordinates using reverse geocoding
+        location, error = get_location_from_coords(lat, lon)
+        if error:
+            # If reverse geocoding fails, create a basic location object
+            location = {
+                'lat': lat,
+                'lon': lon,
+                'name': f'Location ({lat:.2f}, {lon:.2f})',
+                'state': '',
+                'country': ''
+            }
+        
+        # Fetch current weather
+        current_weather, error = fetch_current_weather(lat, lon)
+        if error:
+            return jsonify({'error': error}), 500
+            
+        # Fetch weather forecast
+        forecast, error = fetch_weather_forecast(lat, lon)
+        if error:
+            return jsonify({'error': error}), 500
+        
+        # Combine current weather and forecast
+        combined_data = {
+            'location': location,
+            'current': current_weather,
+            'forecast': forecast,
+            'fetched_at': datetime.now().isoformat()
+        }
+        
+        return jsonify({
+            'success': True,
+            'data': combined_data
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to fetch weather: {str(e)}'}), 500
 
 @app.route('/api/weather/stlouis')
 def get_stlouis_weather():
