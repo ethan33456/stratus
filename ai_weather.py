@@ -326,7 +326,7 @@ def get_comprehensive_ai_analysis_async(user_location, target_location, weather_
     executor = ThreadPoolExecutor(max_workers=1)
     future = executor.submit(run_ai_analysis)
     
-    # Return immediately with loading state
+    # Return immediately with loading state (without the future object)
     return {
         "context_warnings": ["AI analysis in progress..."],
         "suggestions": ["Loading personalized suggestions..."],
@@ -334,7 +334,6 @@ def get_comprehensive_ai_analysis_async(user_location, target_location, weather_
         "climate_comparison": "Analyzing climate differences...",
         "ai_generated": False,
         "loading": True,
-        "future": future,
         "timestamp": datetime.now().isoformat()
     }
 

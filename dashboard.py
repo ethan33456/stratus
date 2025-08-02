@@ -649,6 +649,30 @@ def weather_dashboard():
                 </div>
             `;
             
+            // Display weather details in the second card
+            const weatherDetailsContent = document.getElementById('weather-details-content');
+            weatherDetailsContent.innerHTML = `
+                <h3 style="text-align: center; margin-bottom: 20px; color: #333;">Weather Details</h3>
+                <div class="weather-details">
+                    <div class="detail-item">
+                        <div class="detail-label">Visibility</div>
+                        <div class="detail-value">${(current.visibility / 1000).toFixed(1)} km</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Cloud Cover</div>
+                        <div class="detail-value">${current.clouds?.all || 0}%</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Sunrise</div>
+                        <div class="detail-value">${new Date(current.sys.sunrise * 1000).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'})}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Sunset</div>
+                        <div class="detail-value">${new Date(current.sys.sunset * 1000).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'})}</div>
+                    </div>
+                </div>
+            `;
+            
             // Display forecast
             const forecastContent = document.getElementById('forecast-content');
             if (forecast && forecast.daily) {

@@ -510,9 +510,33 @@ def analyze_weather_with_ai():
         print(f"Starting async AI analysis...")
         ai_analysis = get_comprehensive_ai_analysis_async(user_location, target_location, weather_data)
         
-        # Store the future for later retrieval
+        # Store the future for later retrieval (don't include in response)
         analysis_id = f"{user_lat}_{user_lon}_{target_lat}_{target_lon}_{int(time.time())}"
-        ai_futures[analysis_id] = ai_analysis['future']
+        
+        # Start the actual AI analysis in background
+        def run_ai_analysis():
+            try:
+                print(f"Running AI analysis in background for {analysis_id}")
+                result = get_comprehensive_ai_analysis(user_location, target_location, weather_data)
+                ai_futures[analysis_id] = result
+                print(f"AI analysis completed for {analysis_id}")
+            except Exception as e:
+                print(f"Background AI analysis error: {e}")
+                ai_futures[analysis_id] = {
+                    "context_warnings": [],
+                    "suggestions": ["AI analysis failed"],
+                    "fun_facts": ["Unable to generate insights"],
+                    "climate_comparison": "Analysis unavailable",
+                    "ai_generated": False,
+                    "error": str(e),
+                    "timestamp": datetime.now().isoformat()
+                }
+        
+        # Start background thread
+        import threading
+        thread = threading.Thread(target=run_ai_analysis)
+        thread.daemon = True
+        thread.start()
         
         return jsonify({
             'success': True,
@@ -536,15 +560,15 @@ def get_ai_analysis_result(analysis_id):
         if analysis_id not in ai_futures:
             return jsonify({'error': 'Analysis ID not found'}), 404
         
-        future = ai_futures[analysis_id]
+        result = ai_futures[analysis_id]
         
-        if future.done():
-            result = future.result()
-            # Clean up the future
-            del ai_futures[analysis_id]
+        # Check if analysis is complete (has ai_generated field)
+        if isinstance(result, dict) and 'ai_generated' in result:
+            # Analysis is complete, clean up
+            completed_result = ai_futures.pop(analysis_id)
             return jsonify({
                 'success': True,
-                'result': result,
+                'result': completed_result,
                 'completed': True
             })
         else:
