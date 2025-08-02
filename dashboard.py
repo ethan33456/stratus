@@ -270,6 +270,86 @@ def weather_dashboard():
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
+
+        .ai-insights {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .ai-insights h3 {
+            color: #2d3436;
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .insights-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 15px;
+        }
+
+        .insight-section {
+            background: rgba(116, 185, 255, 0.1);
+            border-radius: 12px;
+            padding: 15px;
+            border-left: 4px solid #74b9ff;
+        }
+
+        .insight-section h4 {
+            color: #0984e3;
+            font-size: 1rem;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .insight-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .insight-list li {
+            color: #2d3436;
+            font-size: 0.9rem;
+            margin-bottom: 6px;
+            padding-left: 15px;
+            position: relative;
+        }
+
+        .insight-list li:before {
+            content: "•";
+            color: #74b9ff;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+
+        .climate-comparison {
+            background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+            border-radius: 10px;
+            padding: 12px;
+            margin-top: 15px;
+            color: #2d3436;
+            font-size: 0.9rem;
+            font-style: italic;
+        }
+
+        .ai-loading {
+            text-align: center;
+            color: #636e72;
+            font-style: italic;
+            padding: 20px;
+        }
     </style>
 </head>
 <body>
@@ -330,6 +410,39 @@ def weather_dashboard():
                 </div>
             </div>
             
+            <!-- AI Insights -->
+            <div id="ai-insights" class="ai-insights" style="display: none;">
+                <h3>🤖 AI Weather Insights</h3>
+                <div id="ai-loading" class="ai-loading">
+                    ⏳ Analyzing weather patterns and generating insights...
+                </div>
+                <div id="ai-content" style="display: none;">
+                    <div class="insights-grid">
+                        <div class="insight-section">
+                            <h4>⚠️ Location Context</h4>
+                            <ul id="context-warnings" class="insight-list">
+                                <!-- Context warnings will be inserted here -->
+                            </ul>
+                        </div>
+                        <div class="insight-section">
+                            <h4>💡 Smart Suggestions</h4>
+                            <ul id="suggestions" class="insight-list">
+                                <!-- Suggestions will be inserted here -->
+                            </ul>
+                        </div>
+                        <div class="insight-section">
+                            <h4>🎯 Fun Facts</h4>
+                            <ul id="fun-facts" class="insight-list">
+                                <!-- Fun facts will be inserted here -->
+                            </ul>
+                        </div>
+                    </div>
+                    <div id="climate-comparison" class="climate-comparison">
+                        <!-- Climate comparison will be inserted here -->
+                    </div>
+                </div>
+            </div>
+            
             <!-- 5-Day Forecast -->
             <h2 class="section-title">📅 5-Day Forecast</h2>
             <div id="forecast-grid" class="forecast-grid">
@@ -374,6 +487,9 @@ def weather_dashboard():
                 const position = await getCurrentPosition();
                 const { latitude, longitude } = position.coords;
                 
+                // Store user's current location for AI analysis
+                userCurrentLocation = { lat: latitude, lon: longitude };
+                
                 // Update loading message
                 document.getElementById('loading-message').textContent = '⏳ Loading weather data...';
                 
@@ -391,6 +507,10 @@ def weather_dashboard():
                 }
                 
                 displayWeather(data);
+                
+                // Get AI insights (same location, so minimal analysis)
+                const aiAnalysis = await getAIInsights(userCurrentLocation, userCurrentLocation);
+                displayAIInsights(aiAnalysis);
                 
             } catch (error) {
                 console.error('Weather loading error:', error);
@@ -412,6 +532,9 @@ def weather_dashboard():
                     }
                     
                     displayWeather(fallbackData);
+                    
+                    // Hide AI insights for fallback
+                    document.getElementById('ai-insights').style.display = 'none';
                     
                 } catch (fallbackError) {
                     console.error('Fallback weather loading error:', fallbackError);
@@ -640,6 +763,15 @@ def weather_dashboard():
                 
                 displayWeather(data);
                 
+                // Get AI insights if user location is available
+                if (userCurrentLocation) {
+                    const aiAnalysis = await getAIInsights(userCurrentLocation, location);
+                    displayAIInsights(aiAnalysis);
+                } else {
+                    // Hide AI insights if no user location
+                    document.getElementById('ai-insights').style.display = 'none';
+                }
+                
             } catch (error) {
                 console.error('Weather loading error:', error);
                 document.getElementById('loading').style.display = 'none';
@@ -669,6 +801,16 @@ def weather_dashboard():
                 
                 displayWeather(data);
                 
+                // Get AI insights if user location is available
+                if (userCurrentLocation) {
+                    const targetLocation = data.data.location;
+                    const aiAnalysis = await getAIInsights(userCurrentLocation, targetLocation);
+                    displayAIInsights(aiAnalysis);
+                } else {
+                    // Hide AI insights if no user location
+                    document.getElementById('ai-insights').style.display = 'none';
+                }
+                
             } catch (error) {
                 console.error('Weather loading error:', error);
                 document.getElementById('loading').style.display = 'none';
@@ -676,6 +818,9 @@ def weather_dashboard():
                 document.getElementById('error').textContent = `Error: ${error.message}`;
             }
         }
+        
+        // Store user's current location for AI analysis
+        let userCurrentLocation = null;
         
         // Load current location weather
         function loadCurrentLocation() {
@@ -685,6 +830,99 @@ def weather_dashboard():
             
             // Reload weather for current location
             loadWeather();
+        }
+        
+        // Get AI analysis for weather
+        async function getAIInsights(userLocation, targetLocation) {
+            try {
+                const response = await fetch(`/api/ai/analyze?user_lat=${userLocation.lat}&user_lon=${userLocation.lon}&target_lat=${targetLocation.lat}&target_lon=${targetLocation.lon}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to get AI analysis');
+                }
+                
+                return data.ai_analysis;
+                
+            } catch (error) {
+                console.error('AI analysis error:', error);
+                return null;
+            }
+        }
+        
+        // Display AI insights
+        function displayAIInsights(aiAnalysis) {
+            const aiInsights = document.getElementById('ai-insights');
+            const aiLoading = document.getElementById('ai-loading');
+            const aiContent = document.getElementById('ai-content');
+            
+            if (!aiAnalysis) {
+                aiInsights.style.display = 'none';
+                return;
+            }
+            
+            // Show AI insights section
+            aiInsights.style.display = 'block';
+            aiLoading.style.display = 'none';
+            aiContent.style.display = 'block';
+            
+            // Display context warnings
+            const contextWarnings = document.getElementById('context-warnings');
+            contextWarnings.innerHTML = '';
+            if (aiAnalysis.context_warnings && aiAnalysis.context_warnings.length > 0) {
+                aiAnalysis.context_warnings.forEach(warning => {
+                    const li = document.createElement('li');
+                    li.textContent = warning;
+                    contextWarnings.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.textContent = 'No specific warnings for this location';
+                contextWarnings.appendChild(li);
+            }
+            
+            // Display suggestions
+            const suggestions = document.getElementById('suggestions');
+            suggestions.innerHTML = '';
+            if (aiAnalysis.suggestions && aiAnalysis.suggestions.length > 0) {
+                aiAnalysis.suggestions.forEach(suggestion => {
+                    const li = document.createElement('li');
+                    li.textContent = suggestion;
+                    suggestions.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.textContent = 'Check local weather updates regularly';
+                suggestions.appendChild(li);
+            }
+            
+            // Display fun facts
+            const funFacts = document.getElementById('fun-facts');
+            funFacts.innerHTML = '';
+            if (aiAnalysis.fun_facts && aiAnalysis.fun_facts.length > 0) {
+                aiAnalysis.fun_facts.forEach(fact => {
+                    const li = document.createElement('li');
+                    li.textContent = fact;
+                    funFacts.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.textContent = 'Weather patterns vary by location';
+                funFacts.appendChild(li);
+            }
+            
+            // Display climate comparison
+            const climateComparison = document.getElementById('climate-comparison');
+            if (aiAnalysis.climate_comparison) {
+                climateComparison.textContent = aiAnalysis.climate_comparison;
+            } else {
+                climateComparison.textContent = 'Climate differences may affect how weather feels';
+            }
         }
         
         // Load weather when page loads

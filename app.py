@@ -5,6 +5,7 @@ from psycopg2.extras import RealDictCursor
 import requests
 from datetime import datetime, timedelta
 from dashboard import weather_dashboard
+from ai_weather import get_comprehensive_ai_analysis
 
 app = Flask(__name__)
 
@@ -468,6 +469,71 @@ def get_weather_by_search():
         
     except Exception as e:
         return jsonify({'error': f'Failed to fetch weather: {str(e)}'}), 500
+
+@app.route('/api/ai/analyze')
+def analyze_weather_with_ai():
+    """Get AI-powered weather analysis"""
+    try:
+        from flask import request
+        
+        # Get parameters
+        user_lat = request.args.get('user_lat')
+        user_lon = request.args.get('user_lon')
+        target_lat = request.args.get('target_lat')
+        target_lon = request.args.get('target_lon')
+        
+        if not all([user_lat, user_lon, target_lat, target_lon]):
+            return jsonify({'error': 'All coordinates are required'}), 400
+        
+        # Get user location name
+        user_location, _ = get_location_from_coords(float(user_lat), float(user_lon))
+        if not user_location:
+            user_location = {
+                'lat': float(user_lat),
+                'lon': float(user_lon),
+                'name': f'Location ({user_lat}, {user_lon})',
+                'state': '',
+                'country': ''
+            }
+        
+        # Get target location name
+        target_location, _ = get_location_from_coords(float(target_lat), float(target_lon))
+        if not target_location:
+            target_location = {
+                'lat': float(target_lat),
+                'lon': float(target_lon),
+                'name': f'Location ({target_lat}, {target_lon})',
+                'state': '',
+                'country': ''
+            }
+        
+        # Get weather data for target location
+        current_weather, error = fetch_current_weather(target_lat, target_lon)
+        if error:
+            return jsonify({'error': error}), 500
+            
+        forecast, error = fetch_weather_forecast(target_lat, target_lon)
+        if error:
+            return jsonify({'error': error}), 500
+        
+        weather_data = {
+            'current': current_weather,
+            'forecast': forecast
+        }
+        
+        # Get AI analysis
+        ai_analysis = get_comprehensive_ai_analysis(user_location, target_location, weather_data)
+        
+        return jsonify({
+            'success': True,
+            'user_location': user_location,
+            'target_location': target_location,
+            'weather_data': weather_data,
+            'ai_analysis': ai_analysis
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'AI analysis failed: {str(e)}'}), 500
 
 @app.route('/api/weather/stlouis')
 def get_stlouis_weather():
