@@ -18,9 +18,9 @@ def weather_dashboard():
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
             min-height: 100vh;
-            color: #333;
+            color: #e8e8e8;
         }
 
         .container {
@@ -38,20 +38,27 @@ def weather_dashboard():
         .header h1 {
             font-size: 2.5rem;
             margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .header p {
             font-size: 1.1rem;
             opacity: 0.9;
+            color: #b8b8b8;
         }
 
         .search-container {
-            background: white;
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 15px;
             padding: 20px;
             margin-bottom: 30px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .search-form {
@@ -63,15 +70,22 @@ def weather_dashboard():
         .search-input {
             flex: 1;
             padding: 12px 15px;
-            border: 2px solid #e1e5e9;
+            border: 2px solid rgba(255, 255, 255, 0.1);
             border-radius: 10px;
             font-size: 16px;
-            transition: border-color 0.3s ease;
+            background: rgba(255, 255, 255, 0.05);
+            color: #e8e8e8;
+            transition: all 0.3s ease;
         }
 
         .search-input:focus {
             outline: none;
             border-color: #667eea;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .search-input::placeholder {
+            color: #888;
         }
 
         .search-button {
@@ -111,25 +125,26 @@ def weather_dashboard():
             top: 100%;
             left: 0;
             right: 0;
-            background: white;
-            border: 2px solid #e1e5e9;
+            background: rgba(30, 30, 50, 0.95);
+            border: 2px solid rgba(255, 255, 255, 0.1);
             border-top: none;
             border-radius: 0 0 10px 10px;
             max-height: 200px;
             overflow-y: auto;
             z-index: 1000;
             display: none;
+            backdrop-filter: blur(10px);
         }
 
         .autocomplete-item {
             padding: 12px 15px;
             cursor: pointer;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             transition: background-color 0.2s ease;
         }
 
         .autocomplete-item:hover {
-            background-color: #f8f9fa;
+            background-color: rgba(255, 255, 255, 0.1);
         }
 
         .autocomplete-item:last-child {
@@ -138,13 +153,78 @@ def weather_dashboard():
 
         .location-name {
             font-weight: 600;
-            color: #333;
+            color: #e8e8e8;
         }
 
         .location-details {
             font-size: 14px;
-            color: #666;
+            color: #b8b8b8;
             margin-top: 2px;
+        }
+
+        .forecast-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .forecast-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .forecast-header h3 {
+            font-size: 1.5rem;
+            color: #e8e8e8;
+            margin-bottom: 5px;
+        }
+
+        #location-display {
+            font-size: 1.1rem;
+            color: #b8b8b8;
+        }
+
+        .forecast-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .forecast-day {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.2s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .forecast-day:hover {
+            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .day-name {
+            font-weight: 600;
+            color: #e8e8e8;
+            margin-bottom: 10px;
+        }
+
+        .day-temp {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .day-description {
+            font-size: 0.9rem;
+            color: #b8b8b8;
+            text-transform: capitalize;
         }
 
         .weather-grid {
@@ -155,11 +235,13 @@ def weather_dashboard():
         }
 
         .weather-card {
-            background: white;
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 15px;
             padding: 25px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
             transition: transform 0.3s ease;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .weather-card:hover {
@@ -179,7 +261,7 @@ def weather_dashboard():
 
         .weather-description {
             font-size: 1.2rem;
-            color: #666;
+            color: #b8b8b8;
             margin-bottom: 20px;
             text-transform: capitalize;
         }
@@ -194,94 +276,37 @@ def weather_dashboard():
         .detail-item {
             text-align: center;
             padding: 15px;
-            background: #f8f9fa;
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .detail-label {
             font-size: 0.9rem;
-            color: #666;
+            color: #b8b8b8;
             margin-bottom: 5px;
         }
 
         .detail-value {
             font-size: 1.1rem;
             font-weight: 600;
-            color: #333;
-        }
-
-        .forecast-container {
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-        }
-
-        .forecast-header {
-            text-align: center;
-            margin-bottom: 25px;
-        }
-
-        .forecast-header h3 {
-            font-size: 1.5rem;
-            color: #333;
-            margin-bottom: 5px;
-        }
-
-        #location-display {
-            font-size: 1.1rem;
-            color: #666;
-        }
-
-        .forecast-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-        }
-
-        .forecast-day {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 20px;
-            text-align: center;
-            transition: transform 0.2s ease;
-        }
-
-        .forecast-day:hover {
-            transform: translateY(-2px);
-        }
-
-        .day-name {
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 10px;
-        }
-
-        .day-temp {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #667eea;
-            margin-bottom: 5px;
-        }
-
-        .day-description {
-            font-size: 0.9rem;
-            color: #666;
-            text-transform: capitalize;
+            color: #e8e8e8;
         }
 
         .ai-insights {
-            background: white;
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 15px;
             padding: 25px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
             margin-top: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .ai-insights h3 {
             text-align: center;
             font-size: 1.5rem;
-            color: #333;
+            color: #e8e8e8;
             margin-bottom: 25px;
         }
 
@@ -292,14 +317,15 @@ def weather_dashboard():
         }
 
         .insight-section {
-            background: #f8f9fa;
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 10px;
             padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .insight-section h4 {
             font-size: 1.1rem;
-            color: #333;
+            color: #e8e8e8;
             margin-bottom: 15px;
             display: flex;
             align-items: center;
@@ -312,9 +338,10 @@ def weather_dashboard():
 
         .insight-list li {
             padding: 8px 0;
-            border-bottom: 1px solid #e1e5e9;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             position: relative;
             padding-left: 20px;
+            color: #b8b8b8;
         }
 
         .insight-list li:last-child {
@@ -342,14 +369,14 @@ def weather_dashboard():
         .ai-loading {
             text-align: center;
             padding: 20px;
-            color: #666;
+            color: #b8b8b8;
         }
 
         .loading-spinner {
             display: inline-block;
             width: 20px;
             height: 20px;
-            border: 3px solid #f3f3f3;
+            border: 3px solid rgba(255, 255, 255, 0.1);
             border-top: 3px solid #667eea;
             border-radius: 50%;
             animation: spin 1s linear infinite;
@@ -362,12 +389,13 @@ def weather_dashboard():
         }
 
         .error-message {
-            background: #f8d7da;
-            color: #721c24;
+            background: rgba(220, 53, 69, 0.2);
+            color: #ff6b6b;
             padding: 15px;
             border-radius: 10px;
             margin: 20px 0;
             text-align: center;
+            border: 1px solid rgba(220, 53, 69, 0.3);
         }
 
         @media (max-width: 768px) {
@@ -405,6 +433,17 @@ def weather_dashboard():
             <div id="autocomplete-dropdown" class="autocomplete-dropdown"></div>
         </div>
 
+        <div class="forecast-container">
+            <div class="forecast-header">
+                <h3>5-Day Forecast</h3>
+                <p id="location-display">Detecting your location...</p>
+            </div>
+            <div id="forecast-content">
+                <div class="loading-spinner"></div>
+                <p>Loading forecast...</p>
+            </div>
+        </div>
+
         <div class="weather-grid">
             <div class="weather-card current-weather">
                 <div id="current-weather-content">
@@ -418,17 +457,6 @@ def weather_dashboard():
                     <div class="loading-spinner"></div>
                     <p>Loading weather details...</p>
                 </div>
-            </div>
-        </div>
-
-        <div class="forecast-container">
-            <div class="forecast-header">
-                <h3>5-Day Forecast</h3>
-                <p id="location-display">Detecting your location...</p>
-            </div>
-            <div id="forecast-content">
-                <div class="loading-spinner"></div>
-                <p>Loading forecast...</p>
             </div>
         </div>
 
@@ -652,7 +680,7 @@ def weather_dashboard():
             // Display weather details in the second card
             const weatherDetailsContent = document.getElementById('weather-details-content');
             weatherDetailsContent.innerHTML = `
-                <h3 style="text-align: center; margin-bottom: 20px; color: #333;">Weather Details</h3>
+                <h3 style="text-align: center; margin-bottom: 20px; color: #e8e8e8;">Weather Details</h3>
                 <div class="weather-details">
                     <div class="detail-item">
                         <div class="detail-label">Visibility</div>
