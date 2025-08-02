@@ -482,10 +482,13 @@ def analyze_weather_with_ai():
         target_lat = request.args.get('target_lat')
         target_lon = request.args.get('target_lon')
         
+        print(f"AI analyze called with: user_lat={user_lat}, user_lon={user_lon}, target_lat={target_lat}, target_lon={target_lon}")
+        
         if not all([user_lat, user_lon, target_lat, target_lon]):
             return jsonify({'error': 'All coordinates are required'}), 400
         
         # Get user location name
+        print(f"Getting user location from coords: {user_lat}, {user_lon}")
         user_location, _ = get_location_from_coords(float(user_lat), float(user_lon))
         if not user_location:
             user_location = {
@@ -495,8 +498,10 @@ def analyze_weather_with_ai():
                 'state': '',
                 'country': ''
             }
+        print(f"User location: {user_location}")
         
         # Get target location name
+        print(f"Getting target location from coords: {target_lat}, {target_lon}")
         target_location, _ = get_location_from_coords(float(target_lat), float(target_lon))
         if not target_location:
             target_location = {
@@ -506,23 +511,31 @@ def analyze_weather_with_ai():
                 'state': '',
                 'country': ''
             }
+        print(f"Target location: {target_location}")
         
         # Get weather data for target location
+        print(f"Fetching current weather for target location...")
         current_weather, error = fetch_current_weather(target_lat, target_lon)
         if error:
+            print(f"Current weather error: {error}")
             return jsonify({'error': error}), 500
             
+        print(f"Fetching forecast for target location...")
         forecast, error = fetch_weather_forecast(target_lat, target_lon)
         if error:
+            print(f"Forecast error: {error}")
             return jsonify({'error': error}), 500
         
         weather_data = {
             'current': current_weather,
             'forecast': forecast
         }
+        print(f"Weather data structure: current={bool(current_weather)}, forecast={bool(forecast)}")
         
         # Get AI analysis
+        print(f"Calling AI analysis...")
         ai_analysis = get_comprehensive_ai_analysis(user_location, target_location, weather_data)
+        print(f"AI analysis completed: {ai_analysis}")
         
         return jsonify({
             'success': True,
@@ -533,6 +546,9 @@ def analyze_weather_with_ai():
         })
         
     except Exception as e:
+        print(f"AI analyze endpoint error: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': f'AI analysis failed: {str(e)}'}), 500
 
 @app.route('/api/weather/stlouis')
