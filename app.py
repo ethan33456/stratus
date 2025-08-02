@@ -133,11 +133,14 @@ def get_location_coords(city, state=None, country='US'):
         return None, "OpenWeatherMap API key not configured"
     
     # Build location string
-    location = f"{city}"
-    if state:
-        location += f",{state}"
-    if country:
-        location += f",{country}"
+    if state and country:
+        location = f"{city},{state},{country}"
+    elif state:
+        location = f"{city},{state}"
+    elif country:
+        location = f"{city},{country}"
+    else:
+        location = city
     
     geocoding_url = f"http://api.openweathermap.org/geo/1.0/direct?q={location}&limit=1&appid={api_key}"
     
@@ -312,6 +315,141 @@ def get_weather_by_coords():
             
         # Fetch weather forecast
         forecast, error = fetch_weather_forecast(lat, lon)
+        if error:
+            return jsonify({'error': error}), 500
+        
+        # Combine current weather and forecast
+        combined_data = {
+            'location': location,
+            'current': current_weather,
+            'forecast': forecast,
+            'fetched_at': datetime.now().isoformat()
+        }
+        
+        return jsonify({
+            'success': True,
+            'data': combined_data
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to fetch weather: {str(e)}'}), 500
+
+@app.route('/api/search/locations')
+def search_locations():
+    """Search for locations using OpenWeatherMap Geocoding API"""
+    try:
+        from flask import request
+        
+        query = request.args.get('q', '').strip()
+        if not query:
+            return jsonify({'success': True, 'locations': []})
+        
+        # Use the existing get_location_coords function but get multiple results
+        api_key = os.getenv('OPENWEATHER_API_KEY')
+        if not api_key:
+            return jsonify({'error': 'OpenWeatherMap API key not configured'}), 500
+        
+        geocoding_url = f"http://api.openweathermap.org/geo/1.0/direct?q={query}&limit=5&appid={api_key}"
+        
+        response = requests.get(geocoding_url, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        locations = []
+        for location_data in data:
+            locations.append({
+                'lat': location_data['lat'],
+                'lon': location_data['lon'],
+                'name': location_data['name'],
+                'state': location_data.get('state', ''),
+                'country': location_data['country']
+            })
+        
+        return jsonify({
+            'success': True,
+            'locations': locations
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Search failed: {str(e)}'}), 500
+
+@app.route('/api/weather/location')
+def get_weather_by_location():
+    """Get weather for a specific location by coordinates"""
+    try:
+        from flask import request
+        
+        lat = request.args.get('lat')
+        lon = request.args.get('lon')
+        
+        if not lat or not lon:
+            return jsonify({'error': 'Latitude and longitude are required'}), 400
+        
+        try:
+            lat = float(lat)
+            lon = float(lon)
+        except ValueError:
+            return jsonify({'error': 'Invalid coordinates'}), 400
+        
+        # Get location name from coordinates
+        location, error = get_location_from_coords(lat, lon)
+        if error:
+            location = {
+                'lat': lat,
+                'lon': lon,
+                'name': f'Location ({lat:.2f}, {lon:.2f})',
+                'state': '',
+                'country': ''
+            }
+        
+        # Fetch current weather
+        current_weather, error = fetch_current_weather(lat, lon)
+        if error:
+            return jsonify({'error': error}), 500
+            
+        # Fetch weather forecast
+        forecast, error = fetch_weather_forecast(lat, lon)
+        if error:
+            return jsonify({'error': error}), 500
+        
+        # Combine current weather and forecast
+        combined_data = {
+            'location': location,
+            'current': current_weather,
+            'forecast': forecast,
+            'fetched_at': datetime.now().isoformat()
+        }
+        
+        return jsonify({
+            'success': True,
+            'data': combined_data
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to fetch weather: {str(e)}'}), 500
+
+@app.route('/api/weather/search')
+def get_weather_by_search():
+    """Get weather for a location by search query"""
+    try:
+        from flask import request
+        
+        query = request.args.get('q', '').strip()
+        if not query:
+            return jsonify({'error': 'Search query is required'}), 400
+        
+        # Get location coordinates from search query
+        location, error = get_location_coords(query)
+        if error:
+            return jsonify({'error': f'Location not found: {query}'}), 404
+        
+        # Fetch current weather
+        current_weather, error = fetch_current_weather(location['lat'], location['lon'])
+        if error:
+            return jsonify({'error': error}), 500
+            
+        # Fetch weather forecast
+        forecast, error = fetch_weather_forecast(location['lat'], location['lon'])
         if error:
             return jsonify({'error': error}), 500
         

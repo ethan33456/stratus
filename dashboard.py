@@ -168,23 +168,107 @@ def weather_dashboard():
             margin-bottom: 15px;
             text-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
-        .search-bar {
-            position: absolute;
-            top: 10px;
-            right: 20px;
+        .search-container {
+            position: relative;
+            margin: 20px auto;
+            max-width: 400px;
+        }
+
+        .search-form {
             display: flex;
-            gap: 5px;
+            gap: 10px;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 25px;
+            padding: 10px 20px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
         }
 
-        .search-bar input[type="text"] {
-            padding: 6px 10px;
-            border-radius: 5px;
+        .search-input {
+            flex: 1;
             border: none;
+            background: transparent;
             font-size: 1rem;
+            outline: none;
+            color: #2d3436;
         }
 
-        .search-bar button:hover {
+        .search-input::placeholder {
+            color: #636e72;
+        }
+
+        .search-button {
             background: #74b9ff;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s ease;
+        }
+
+        .search-button:hover {
+            background: #0984e3;
+        }
+
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .autocomplete-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.2s ease;
+        }
+
+        .autocomplete-item:hover {
+            background: #f8f9fa;
+        }
+
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        .location-name {
+            font-weight: bold;
+            color: #2d3436;
+        }
+
+        .location-details {
+            font-size: 0.8rem;
+            color: #636e72;
+            margin-top: 2px;
+        }
+
+        .current-location-btn {
+            background: rgba(255, 255, 255, 0.9);
+            color: #2d3436;
+            border: none;
+            border-radius: 20px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .current-location-btn:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
     </style>
 </head>
@@ -193,9 +277,23 @@ def weather_dashboard():
         <div class="header">
             <h1>Stratus Weather</h1>
             <p id="location-display">Detecting your location...</p>
-            <form id="search-form" class="search-bar" onsubmit="searchCity(event)">
-            <input type="text" id="city-input" placeholder="Search city" required>
+        </div>
+        
+        <div class="search-container">
+            <form id="search-form" class="search-form" onsubmit="searchLocation(event)">
+                <input 
+                    type="text" 
+                    id="search-input" 
+                    class="search-input" 
+                    placeholder="Search for a city..." 
+                    autocomplete="off"
+                >
+                <button type="submit" class="search-button">Search</button>
             </form>
+            <div id="autocomplete-dropdown" class="autocomplete-dropdown"></div>
+            <button id="current-location-btn" class="current-location-btn" onclick="loadCurrentLocation()">
+                📍 My Location
+            </button>
         </div>
         
         <div id="loading" class="loading">
@@ -400,6 +498,193 @@ def weather_dashboard():
             // Show content and hide loading
             document.getElementById('loading').style.display = 'none';
             document.getElementById('weather-content').style.display = 'block';
+        }
+        
+        // Search and autocomplete functionality
+        let searchTimeout;
+        const searchInput = document.getElementById('search-input');
+        const autocompleteDropdown = document.getElementById('autocomplete-dropdown');
+        
+        // Add event listeners for search input
+        searchInput.addEventListener('input', handleSearchInput);
+        searchInput.addEventListener('focus', () => {
+            if (searchInput.value.length > 0) {
+                showAutocomplete();
+            }
+        });
+        
+        // Close autocomplete when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-container')) {
+                hideAutocomplete();
+            }
+        });
+        
+        // Handle search input changes
+        function handleSearchInput() {
+            const query = searchInput.value.trim();
+            
+            // Clear previous timeout
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+            
+            // Hide autocomplete if query is empty
+            if (query.length === 0) {
+                hideAutocomplete();
+                return;
+            }
+            
+            // Debounce the search
+            searchTimeout = setTimeout(() => {
+                searchLocations(query);
+            }, 300);
+        }
+        
+        // Search for locations
+        async function searchLocations(query) {
+            try {
+                const response = await fetch(`/api/search/locations?q=${encodeURIComponent(query)}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.locations.length > 0) {
+                    showAutocomplete(data.locations);
+                } else {
+                    hideAutocomplete();
+                }
+                
+            } catch (error) {
+                console.error('Search error:', error);
+                hideAutocomplete();
+            }
+        }
+        
+        // Show autocomplete dropdown
+        function showAutocomplete(locations = []) {
+            if (locations.length === 0) {
+                hideAutocomplete();
+                return;
+            }
+            
+            autocompleteDropdown.innerHTML = '';
+            
+            locations.forEach(location => {
+                const item = document.createElement('div');
+                item.className = 'autocomplete-item';
+                item.innerHTML = `
+                    <div class="location-name">${location.name}</div>
+                    <div class="location-details">${location.state ? location.state + ', ' : ''}${location.country}</div>
+                `;
+                
+                item.addEventListener('click', () => {
+                    searchInput.value = location.name;
+                    hideAutocomplete();
+                    loadWeatherForLocation(location);
+                });
+                
+                autocompleteDropdown.appendChild(item);
+            });
+            
+            autocompleteDropdown.style.display = 'block';
+        }
+        
+        // Hide autocomplete dropdown
+        function hideAutocomplete() {
+            autocompleteDropdown.style.display = 'none';
+        }
+        
+        // Handle form submission
+        function searchLocation(event) {
+            event.preventDefault();
+            const query = searchInput.value.trim();
+            
+            if (query.length === 0) {
+                return;
+            }
+            
+            hideAutocomplete();
+            
+            // Try to search for the location
+            searchLocations(query).then(() => {
+                // If autocomplete is shown, the user can click on a result
+                // If not, we'll try to load weather for the entered text
+                if (autocompleteDropdown.style.display === 'none') {
+                    loadWeatherForQuery(query);
+                }
+            });
+        }
+        
+        // Load weather for a specific location
+        async function loadWeatherForLocation(location) {
+            try {
+                document.getElementById('loading').style.display = 'block';
+                document.getElementById('weather-content').style.display = 'none';
+                document.getElementById('loading-message').textContent = `⏳ Loading weather for ${location.name}...`;
+                
+                const response = await fetch(`/api/weather/location?lat=${location.lat}&lon=${location.lon}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to load weather data');
+                }
+                
+                displayWeather(data);
+                
+            } catch (error) {
+                console.error('Weather loading error:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = `Error: ${error.message}`;
+            }
+        }
+        
+        // Load weather for a search query
+        async function loadWeatherForQuery(query) {
+            try {
+                document.getElementById('loading').style.display = 'block';
+                document.getElementById('weather-content').style.display = 'none';
+                document.getElementById('loading-message').textContent = `⏳ Loading weather for ${query}...`;
+                
+                const response = await fetch(`/api/weather/search?q=${encodeURIComponent(query)}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to load weather data');
+                }
+                
+                displayWeather(data);
+                
+            } catch (error) {
+                console.error('Weather loading error:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = `Error: ${error.message}`;
+            }
+        }
+        
+        // Load current location weather
+        function loadCurrentLocation() {
+            // Clear search input
+            searchInput.value = '';
+            hideAutocomplete();
+            
+            // Reload weather for current location
+            loadWeather();
         }
         
         // Load weather when page loads
