@@ -5,9 +5,14 @@ from psycopg2.extras import RealDictCursor
 import requests
 from datetime import datetime, timedelta
 from dashboard import weather_dashboard
-from ai_weather import get_comprehensive_ai_analysis
+from ai_weather import get_comprehensive_ai_analysis, get_comprehensive_ai_analysis_async
+import threading
+import time
 
 app = Flask(__name__)
+
+# Store AI analysis futures
+ai_futures = {}
 
 def get_db_connection():
     """Get database connection using Railway's DATABASE_URL"""
@@ -98,23 +103,7 @@ def init_database():
                 location_id INTEGER REFERENCES locations(id),
                 forecast_date DATE NOT NULL,
                 weather_data JSONB NOT NULL,
-                created_at TIMESTAMP DEFAULT NOW(),
-                expires_at TIMESTAMP NOT NULL,
-                UNIQUE(location_id, forecast_date)
-            );
-        ''')
-        
-        # Create AI summaries table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS ai_summaries (
-                id SERIAL PRIMARY KEY,
-                location_id INTEGER REFERENCES locations(id),
-                forecast_date DATE NOT NULL,
-                summary_text TEXT NOT NULL,
-                summary_data JSONB,
-                ai_provider VARCHAR(50),
-                created_at TIMESTAMP DEFAULT NOW(),
-                expires_at TIMESTAMP NOT NULL
+                created_at TIMESTAMP DEFAULT NOW()
             );
         ''')
         
@@ -129,182 +118,169 @@ def init_database():
 
 def get_location_coords(city, state=None, country='US'):
     """Get coordinates for a city using OpenWeatherMap Geocoding API"""
-    api_key = os.getenv('OPENWEATHER_API_KEY')
-    if not api_key:
-        return None, "OpenWeatherMap API key not configured"
-    
-    # Build location string
-    if state and country:
-        location = f"{city},{state},{country}"
-    elif state:
-        location = f"{city},{state}"
-    elif country:
-        location = f"{city},{country}"
-    else:
-        location = city
-    
-    geocoding_url = f"http://api.openweathermap.org/geo/1.0/direct?q={location}&limit=1&appid={api_key}"
-    
     try:
-        response = requests.get(geocoding_url, timeout=10)
+        api_key = os.getenv('OPENWEATHER_API_KEY')
+        if not api_key:
+            return None, "OpenWeatherMap API key not found"
+        
+        # Build query
+        query_parts = [city]
+        if state:
+            query_parts.append(state)
+        if country:
+            query_parts.append(country)
+        
+        query = ','.join(query_parts)
+        
+        url = f"http://api.openweathermap.org/geo/1.0/direct?q={query}&limit=1&appid={api_key}"
+        
+        response = requests.get(url, timeout=10)
         response.raise_for_status()
+        
         data = response.json()
         
         if not data:
-            return None, f"Location not found: {location}"
-            
-        location_data = data[0]
+            return None, f"No coordinates found for {query}"
+        
+        location = data[0]
         return {
-            'lat': location_data['lat'],
-            'lon': location_data['lon'],
-            'name': location_data['name'],
-            'state': location_data.get('state', ''),
-            'country': location_data['country']
+            'name': location.get('name', city),
+            'lat': location.get('lat'),
+            'lon': location.get('lon'),
+            'state': location.get('state', state),
+            'country': location.get('country', country)
         }, None
         
+    except requests.exceptions.RequestException as e:
+        return None, f"Network error: {str(e)}"
     except Exception as e:
-        return None, f"Geocoding error: {str(e)}"
+        return None, f"Error getting coordinates: {str(e)}"
 
 def get_location_from_coords(lat, lon):
     """Get location name from coordinates using OpenWeatherMap Reverse Geocoding API"""
-    api_key = os.getenv('OPENWEATHER_API_KEY')
-    if not api_key:
-        return None, "OpenWeatherMap API key not configured"
-    
-    reverse_geocoding_url = f"http://api.openweathermap.org/geo/1.0/reverse?lat={lat}&lon={lon}&limit=1&appid={api_key}"
-    
     try:
-        response = requests.get(reverse_geocoding_url, timeout=10)
+        api_key = os.getenv('OPENWEATHER_API_KEY')
+        if not api_key:
+            return None, "OpenWeatherMap API key not found"
+        
+        url = f"http://api.openweathermap.org/geo/1.0/reverse?lat={lat}&lon={lon}&limit=1&appid={api_key}"
+        
+        response = requests.get(url, timeout=10)
         response.raise_for_status()
+        
         data = response.json()
         
         if not data:
-            return None, f"Location not found for coordinates ({lat}, {lon})"
-            
-        location_data = data[0]
+            return None, f"No location found for coordinates ({lat}, {lon})"
+        
+        location = data[0]
         return {
+            'name': location.get('name', 'Unknown'),
             'lat': lat,
             'lon': lon,
-            'name': location_data['name'],
-            'state': location_data.get('state', ''),
-            'country': location_data['country']
+            'state': location.get('state', ''),
+            'country': location.get('country', '')
         }, None
         
+    except requests.exceptions.RequestException as e:
+        return None, f"Network error: {str(e)}"
     except Exception as e:
-        return None, f"Reverse geocoding error: {str(e)}"
+        return None, f"Error getting location: {str(e)}"
 
 def fetch_current_weather(lat, lon):
-    """Fetch current weather from OpenWeatherMap"""
-    api_key = os.getenv('OPENWEATHER_API_KEY')
-    if not api_key:
-        return None, "OpenWeatherMap API key not configured"
-    
-    # Use Current Weather API (free tier)
-    weather_url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=imperial"
-    
+    """Fetch current weather data from OpenWeatherMap API"""
     try:
-        response = requests.get(weather_url, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-        return data, None
+        api_key = os.getenv('OPENWEATHER_API_KEY')
+        if not api_key:
+            return None, "OpenWeatherMap API key not found"
         
+        url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=imperial"
+        
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        
+        return response.json(), None
+        
+    except requests.exceptions.RequestException as e:
+        return None, f"Network error: {str(e)}"
     except Exception as e:
-        return None, f"Current weather API error: {str(e)}"
+        return None, f"Error fetching current weather: {str(e)}"
 
 def fetch_weather_forecast(lat, lon):
-    """Fetch 5-day weather forecast from OpenWeatherMap"""
-    api_key = os.getenv('OPENWEATHER_API_KEY')
-    if not api_key:
-        return None, "OpenWeatherMap API key not configured"
-    
-    # Use 5 Day / 3 Hour Forecast API (free tier)
-    forecast_url = f"https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={api_key}&units=imperial"
-    
+    """Fetch 5-day weather forecast from OpenWeatherMap API"""
     try:
-        response = requests.get(forecast_url, timeout=10)
+        api_key = os.getenv('OPENWEATHER_API_KEY')
+        if not api_key:
+            return None, "OpenWeatherMap API key not found"
+        
+        url = f"https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={api_key}&units=imperial"
+        
+        response = requests.get(url, timeout=10)
         response.raise_for_status()
+        
         data = response.json()
         
-        # Format the forecast data to mimic daily forecasts
+        # Process forecast data to get daily forecasts
         daily_forecasts = []
-        current_day = None
-        day_data = {}
+        current_date = None
+        daily_data = {}
         
-        for item in data['list']:
-            date = datetime.fromtimestamp(item['dt']).date()
+        for item in data.get('list', []):
+            date = datetime.fromtimestamp(item['dt']).strftime('%Y-%m-%d')
             
-            if current_day != date:
-                # Save previous day if exists
-                if day_data:
-                    daily_forecasts.append(day_data)
+            if date != current_date:
+                if current_date and daily_data:
+                    daily_forecasts.append(daily_data)
                 
-                # Start new day
-                current_day = date
-                day_data = {
+                current_date = date
+                daily_data = {
                     'dt': item['dt'],
-                    'date': date.isoformat(),
-                    'weather': item['weather'],
                     'temp': {
-                        'min': item['main']['temp'],
-                        'max': item['main']['temp'],
-                        'day': item['main']['temp']
+                        'day': item['main']['temp'],
+                        'min': item['main']['temp_min'],
+                        'max': item['main']['temp_max']
                     },
                     'humidity': item['main']['humidity'],
-                    'pressure': item['main']['pressure'],
-                    'wind_speed': item['wind']['speed'],
-                    'wind_deg': item['wind'].get('deg', 0),
-                    'clouds': item['clouds']['all'],
-                    'pop': item.get('pop', 0) * 100  # Convert to percentage
+                    'weather': item['weather']
                 }
             else:
-                # Update min/max for the day
-                day_data['temp']['min'] = min(day_data['temp']['min'], item['main']['temp'])
-                day_data['temp']['max'] = max(day_data['temp']['max'], item['main']['temp'])
+                # Update min/max temperatures for the same day
+                daily_data['temp']['min'] = min(daily_data['temp']['min'], item['main']['temp_min'])
+                daily_data['temp']['max'] = max(daily_data['temp']['max'], item['main']['temp_max'])
         
         # Add the last day
-        if day_data:
-            daily_forecasts.append(day_data)
+        if daily_data:
+            daily_forecasts.append(daily_data)
         
-        # Format the complete forecast data
-        formatted_forecast = {
-            'location': {'lat': lat, 'lon': lon},
-            'daily': daily_forecasts[:5],  # 5-day forecast
-            'timezone': 'America/Chicago',  # Default timezone
-            'fetched_at': datetime.now().isoformat()
-        }
+        return {
+            'daily': daily_forecasts[:5]  # Return 5 days
+        }, None
         
-        return formatted_forecast, None
-        
+    except requests.exceptions.RequestException as e:
+        return None, f"Network error: {str(e)}"
     except Exception as e:
-        return None, f"Weather API error: {str(e)}"
+        return None, f"Error fetching forecast: {str(e)}"
 
 @app.route('/api/weather/coords')
 def get_weather_by_coords():
-    """Get current weather and 5-day forecast for coordinates"""
+    """Get weather data for specific coordinates"""
     try:
         from flask import request
         
-        # Get coordinates from query parameters
         lat = request.args.get('lat')
         lon = request.args.get('lon')
         
         if not lat or not lon:
             return jsonify({'error': 'Latitude and longitude are required'}), 400
         
-        try:
-            lat = float(lat)
-            lon = float(lon)
-        except ValueError:
-            return jsonify({'error': 'Invalid coordinates'}), 400
-        
-        # Get location name from coordinates using reverse geocoding
+        # Get location name
         location, error = get_location_from_coords(lat, lon)
         if error:
-            # If reverse geocoding fails, create a basic location object
+            print(f"Location lookup error: {error}")
             location = {
-                'lat': lat,
-                'lon': lon,
-                'name': f'Location ({lat:.2f}, {lon:.2f})',
+                'name': f'Location ({lat}, {lon})',
+                'lat': float(lat),
+                'lon': float(lon),
                 'state': '',
                 'country': ''
             }
@@ -343,40 +319,43 @@ def search_locations():
         
         query = request.args.get('q', '').strip()
         if not query:
-            return jsonify({'success': True, 'locations': []})
+            return jsonify({'error': 'Search query is required'}), 400
         
-        # Use the existing get_location_coords function but get multiple results
         api_key = os.getenv('OPENWEATHER_API_KEY')
         if not api_key:
-            return jsonify({'error': 'OpenWeatherMap API key not configured'}), 500
+            return jsonify({'error': 'OpenWeatherMap API key not found'}), 500
         
-        geocoding_url = f"http://api.openweathermap.org/geo/1.0/direct?q={query}&limit=5&appid={api_key}"
+        url = f"http://api.openweathermap.org/geo/1.0/direct?q={query}&limit=5&appid={api_key}"
         
-        response = requests.get(geocoding_url, timeout=10)
+        response = requests.get(url, timeout=10)
         response.raise_for_status()
-        data = response.json()
         
-        locations = []
-        for location_data in data:
-            locations.append({
-                'lat': location_data['lat'],
-                'lon': location_data['lon'],
-                'name': location_data['name'],
-                'state': location_data.get('state', ''),
-                'country': location_data['country']
+        locations = response.json()
+        
+        # Format locations for frontend
+        formatted_locations = []
+        for loc in locations:
+            formatted_locations.append({
+                'name': loc.get('name', ''),
+                'state': loc.get('state', ''),
+                'country': loc.get('country', ''),
+                'lat': loc.get('lat'),
+                'lon': loc.get('lon')
             })
         
         return jsonify({
             'success': True,
-            'locations': locations
+            'locations': formatted_locations
         })
         
+    except requests.exceptions.RequestException as e:
+        return jsonify({'error': f'Network error: {str(e)}'}), 500
     except Exception as e:
         return jsonify({'error': f'Search failed: {str(e)}'}), 500
 
 @app.route('/api/weather/location')
 def get_weather_by_location():
-    """Get weather for a specific location by coordinates"""
+    """Get weather data for a specific location (used by autocomplete selection)"""
     try:
         from flask import request
         
@@ -386,19 +365,14 @@ def get_weather_by_location():
         if not lat or not lon:
             return jsonify({'error': 'Latitude and longitude are required'}), 400
         
-        try:
-            lat = float(lat)
-            lon = float(lon)
-        except ValueError:
-            return jsonify({'error': 'Invalid coordinates'}), 400
-        
-        # Get location name from coordinates
+        # Get location name
         location, error = get_location_from_coords(lat, lon)
         if error:
+            print(f"Location lookup error: {error}")
             location = {
-                'lat': lat,
-                'lon': lon,
-                'name': f'Location ({lat:.2f}, {lon:.2f})',
+                'name': f'Location ({lat}, {lon})',
+                'lat': float(lat),
+                'lon': float(lon),
                 'state': '',
                 'country': ''
             }
@@ -431,7 +405,7 @@ def get_weather_by_location():
 
 @app.route('/api/weather/search')
 def get_weather_by_search():
-    """Get weather for a location by search query"""
+    """Get weather data for a location based on search query"""
     try:
         from flask import request
         
@@ -439,10 +413,10 @@ def get_weather_by_search():
         if not query:
             return jsonify({'error': 'Search query is required'}), 400
         
-        # Get location coordinates from search query
+        # Get coordinates for the search query
         location, error = get_location_coords(query)
         if error:
-            return jsonify({'error': f'Location not found: {query}'}), 404
+            return jsonify({'error': error}), 400
         
         # Fetch current weather
         current_weather, error = fetch_current_weather(location['lat'], location['lon'])
@@ -472,7 +446,7 @@ def get_weather_by_search():
 
 @app.route('/api/ai/analyze')
 def analyze_weather_with_ai():
-    """Get AI-powered weather analysis"""
+    """Get AI-powered weather analysis - starts async analysis"""
     try:
         from flask import request
         
@@ -532,13 +506,17 @@ def analyze_weather_with_ai():
         }
         print(f"Weather data structure: current={bool(current_weather)}, forecast={bool(forecast)}")
         
-        # Get AI analysis
-        print(f"Calling AI analysis...")
-        ai_analysis = get_comprehensive_ai_analysis(user_location, target_location, weather_data)
-        print(f"AI analysis completed: {ai_analysis}")
+        # Start async AI analysis
+        print(f"Starting async AI analysis...")
+        ai_analysis = get_comprehensive_ai_analysis_async(user_location, target_location, weather_data)
+        
+        # Store the future for later retrieval
+        analysis_id = f"{user_lat}_{user_lon}_{target_lat}_{target_lon}_{int(time.time())}"
+        ai_futures[analysis_id] = ai_analysis['future']
         
         return jsonify({
             'success': True,
+            'analysis_id': analysis_id,
             'user_location': user_location,
             'target_location': target_location,
             'weather_data': weather_data,
@@ -550,6 +528,35 @@ def analyze_weather_with_ai():
         import traceback
         traceback.print_exc()
         return jsonify({'error': f'AI analysis failed: {str(e)}'}), 500
+
+@app.route('/api/ai/result/<analysis_id>')
+def get_ai_analysis_result(analysis_id):
+    """Get the result of an async AI analysis"""
+    try:
+        if analysis_id not in ai_futures:
+            return jsonify({'error': 'Analysis ID not found'}), 404
+        
+        future = ai_futures[analysis_id]
+        
+        if future.done():
+            result = future.result()
+            # Clean up the future
+            del ai_futures[analysis_id]
+            return jsonify({
+                'success': True,
+                'result': result,
+                'completed': True
+            })
+        else:
+            return jsonify({
+                'success': True,
+                'completed': False,
+                'message': 'Analysis still in progress'
+            })
+            
+    except Exception as e:
+        print(f"AI result endpoint error: {e}")
+        return jsonify({'error': f'Failed to get AI result: {str(e)}'}), 500
 
 @app.route('/api/weather/stlouis')
 def get_stlouis_weather():
@@ -585,8 +592,6 @@ def get_stlouis_weather():
         
     except Exception as e:
         return jsonify({'error': f'Failed to fetch weather: {str(e)}'}), 500
-
-
 
 if __name__ == '__main__':
     # Railway provides the PORT environment variable

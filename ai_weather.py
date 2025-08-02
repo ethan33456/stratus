@@ -3,6 +3,9 @@ import os
 from datetime import datetime, timedelta
 import json
 import re
+import asyncio
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 def get_openai_client():
     """Get OpenAI client with API key from environment"""
@@ -269,6 +272,71 @@ Focus on specific, interesting facts about the location's weather patterns.
         import traceback
         traceback.print_exc()
         return ["Weather conditions change throughout the day"]
+
+def get_comprehensive_ai_analysis_async(user_location, target_location, weather_data):
+    """
+    Get comprehensive AI analysis asynchronously - returns immediately with loading state
+    """
+    def run_ai_analysis():
+        """Run AI analysis in background thread"""
+        try:
+            print(f"Starting comprehensive AI analysis in background...")
+            print(f"User location: {user_location}")
+            print(f"Target location: {target_location}")
+            
+            # Get context analysis
+            print("Getting context analysis...")
+            context_analysis = analyze_weather_context(user_location, target_location, weather_data)
+            
+            # Get suggestions
+            print("Getting weather suggestions...")
+            suggestions = generate_weather_suggestions(weather_data, user_location)
+            
+            # Get insights
+            print("Getting weather insights...")
+            insights = create_weather_insights(weather_data, target_location)
+            
+            result = {
+                "context_warnings": context_analysis.get("context_warnings", []),
+                "suggestions": suggestions,
+                "fun_facts": insights,
+                "climate_comparison": context_analysis.get("climate_comparison", ""),
+                "ai_generated": True,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            print(f"Final AI analysis result: {result}")
+            return result
+            
+        except Exception as e:
+            print(f"Comprehensive AI analysis error: {e}")
+            import traceback
+            traceback.print_exc()
+            return {
+                "context_warnings": [],
+                "suggestions": ["Check local weather updates"],
+                "fun_facts": ["Weather patterns vary by location"],
+                "climate_comparison": "Climate differences may affect weather perception",
+                "ai_generated": False,
+                "error": str(e),
+                "timestamp": datetime.now().isoformat()
+            }
+    
+    # Start AI analysis in background thread
+    executor = ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(run_ai_analysis)
+    
+    # Return immediately with loading state
+    return {
+        "context_warnings": ["AI analysis in progress..."],
+        "suggestions": ["Loading personalized suggestions..."],
+        "fun_facts": ["Loading weather insights..."],
+        "climate_comparison": "Analyzing climate differences...",
+        "ai_generated": False,
+        "loading": True,
+        "future": future,
+        "timestamp": datetime.now().isoformat()
+    }
 
 def get_comprehensive_ai_analysis(user_location, target_location, weather_data):
     """
