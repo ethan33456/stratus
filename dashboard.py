@@ -18,7 +18,7 @@ def weather_dashboard():
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #131333 0%, #030712 50%, #233449 100%)
+            background: linear-gradient(135deg, #131333 0%, #030712 50%, #233449 100%);
             min-height: 100vh;
             color: #e8e8e8;
         }

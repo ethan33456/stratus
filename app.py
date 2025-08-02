@@ -200,6 +200,7 @@ def fetch_weather_data(lat, lon):
         response.raise_for_status()
         
         data = response.json()
+        print(f"One Call API response: {data}")  # Debug
         
         # Process the data to match our expected format
         current_weather = {
@@ -275,15 +276,16 @@ def get_weather_by_coords():
                 'country': ''
             }
         
-        # Fetch current weather
-        current_weather, error = fetch_weather_data(lat, lon)
+        # Fetch weather data
+        weather_data, error = fetch_weather_data(lat, lon)
         if error:
             return jsonify({'error': error}), 500
             
         # Combine current weather and forecast
         combined_data = {
             'location': location,
-            'current': current_weather,
+            'current': weather_data['current'],
+            'forecast': weather_data['forecast'],
             'fetched_at': datetime.now().isoformat()
         }
         
@@ -361,15 +363,16 @@ def get_weather_by_location():
                 'country': ''
             }
         
-        # Fetch current weather
-        current_weather, error = fetch_weather_data(lat, lon)
+        # Fetch weather data
+        weather_data, error = fetch_weather_data(lat, lon)
         if error:
             return jsonify({'error': error}), 500
             
         # Combine current weather and forecast
         combined_data = {
             'location': location,
-            'current': current_weather,
+            'current': weather_data['current'],
+            'forecast': weather_data['forecast'],
             'fetched_at': datetime.now().isoformat()
         }
         
@@ -396,15 +399,16 @@ def get_weather_by_search():
         if error:
             return jsonify({'error': error}), 400
         
-        # Fetch current weather
-        current_weather, error = fetch_weather_data(location['lat'], location['lon'])
+        # Fetch weather data
+        weather_data, error = fetch_weather_data(location['lat'], location['lon'])
         if error:
             return jsonify({'error': error}), 500
             
         # Combine current weather and forecast
         combined_data = {
             'location': location,
-            'current': current_weather,
+            'current': weather_data['current'],
+            'forecast': weather_data['forecast'],
             'fetched_at': datetime.now().isoformat()
         }
         
@@ -460,22 +464,15 @@ def analyze_weather_with_ai():
         print(f"Target location: {target_location}")
         
         # Get weather data for target location
-        print(f"Fetching current weather for target location...")
-        current_weather, error = fetch_weather_data(target_lat, target_lon)
+        print(f"Fetching weather data for target location...")
+        weather_data, error = fetch_weather_data(target_lat, target_lon)
         if error:
-            print(f"Current weather error: {error}")
-            return jsonify({'error': error}), 500
-            
-        print(f"Fetching forecast for target location...")
-        forecast, error = fetch_weather_forecast(target_lat, target_lon)
-        if error:
-            print(f"Forecast error: {error}")
+            print(f"Weather data error: {error}")
             return jsonify({'error': error}), 500
         
-        weather_data = {
-            'current': current_weather,
-            'forecast': forecast
-        }
+        # Extract current and forecast from the weather data
+        current_weather = weather_data['current']
+        forecast = weather_data['forecast']
         print(f"Weather data structure: current={bool(current_weather)}, forecast={bool(forecast)}")
         
         # Start async AI analysis
@@ -563,15 +560,16 @@ def get_stlouis_weather():
         if error:
             return jsonify({'error': error}), 400
         
-        # Fetch current weather
-        current_weather, error = fetch_weather_data(location['lat'], location['lon'])
+        # Fetch weather data
+        weather_data, error = fetch_weather_data(location['lat'], location['lon'])
         if error:
             return jsonify({'error': error}), 500
             
         # Combine current weather and forecast
         combined_data = {
             'location': location,
-            'current': current_weather,
+            'current': weather_data['current'],
+            'forecast': weather_data['forecast'],
             'fetched_at': datetime.now().isoformat()
         }
         
