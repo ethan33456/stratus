@@ -39,7 +39,7 @@ def weather_dashboard():
             font-size: 2.5rem;
             margin-bottom: 10px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-            background: linear-gradient(45deg, #667eea, #764ba2);
+            background: linear-gradient(45deg, #fff, #fff);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -420,7 +420,7 @@ def weather_dashboard():
 <body>
     <div class="container">
         <div class="header">
-            <h1>🌤️ Stratus Weather</h1>
+            <h1>Stratus Weather</h1>
             <p>Your intelligent weather companion</p>
         </div>
 
@@ -428,8 +428,8 @@ def weather_dashboard():
             <form id="search-form" class="search-form">
                 <input type="text" id="search-input" class="search-input" placeholder="Search for a location..." autocomplete="off">
                 <button type="submit" class="search-button">Search</button>
+                <button type="button" id="current-location-btn">📍 My Location</button>
             </form>
-            <button id="current-location-btn">📍 My Location</button>
             <div id="autocomplete-dropdown" class="autocomplete-dropdown"></div>
         </div>
 
@@ -706,9 +706,13 @@ def weather_dashboard():
             if (forecast && forecast.daily) {
                 forecastContent.innerHTML = `
                     <div class="forecast-grid">
-                        ${forecast.daily.map(day => {
+                        ${forecast.daily.map((day, index) => {
                             const date = new Date(day.dt * 1000);
-                            const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+                            // Get the day name based on the actual date, not just the timestamp
+                            const today = new Date();
+                            const forecastDate = new Date(today);
+                            forecastDate.setDate(today.getDate() + index);
+                            const dayName = forecastDate.toLocaleDateString('en-US', { weekday: 'short' });
                             return `
                                 <div class="forecast-day">
                                     <div class="day-name">${dayName}</div>
