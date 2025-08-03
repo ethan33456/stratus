@@ -52,7 +52,7 @@ def api_home():
 
 @app.route('/api/health')
 def health_check():
-    # Test database connection
+    # Test the database connection
     db_status = 'disconnected'
     try:
         conn = get_db_connection()
@@ -266,7 +266,7 @@ def get_weather_by_coords():
         if not lat or not lon:
             return jsonify({'error': 'Latitude and longitude are required'}), 400
         
-        # Get location name
+        # Obtain location name
         location, error = get_location_from_coords(lat, lon)
         if error:
             print(f"Location lookup error: {error}")
