@@ -67,8 +67,56 @@ def analyze_weather_context(user_location, target_location, weather_data):
         
         print(f"Weather data structure: current={bool(current)}, forecast={bool(forecast)}, daily_count={len(daily)}")
         
-        # Build context prompt with explicit JSON formatting instructions
-        prompt = f"""
+        # Check if user is viewing their current location (same coordinates)
+        user_lat = user_location.get('lat', 0)
+        user_lon = user_location.get('lon', 0)
+        target_lat = target_location.get('lat', 0)
+        target_lon = target_location.get('lon', 0)
+        
+        # Consider locations the same if coordinates are within 0.01 degrees (roughly 1km)
+        is_same_location = (abs(float(user_lat) - float(target_lat)) < 0.01 and 
+                           abs(float(user_lon) - float(target_lon)) < 0.01)
+        
+        if is_same_location:
+            # User is viewing their current location - provide local insights without comparison
+            prompt = f"""
+You are a helpful weather assistant providing location-based weather insights for the user's current location.
+
+LOCATION:
+- Current location: {target_location.get('name', 'Unknown')}, {target_location.get('state', '')}, {target_location.get('country', '')}
+- Coordinates: {target_location.get('lat', 'N/A')}, {target_location.get('lon', 'N/A')}
+
+CURRENT WEATHER:
+- Temperature: {current.get('main', {}).get('temp', 'N/A')}°F
+- Feels like: {current.get('main', {}).get('feels_like', 'N/A')}°F
+- Humidity: {current.get('main', {}).get('humidity', 'N/A')}%
+- Wind speed: {current.get('wind', {}).get('speed', 'N/A')} mph
+- Weather description: {current.get('weather', [{}])[0].get('description', 'N/A')}
+
+5-DAY FORECAST:
+{json.dumps(daily[:3], indent=2)}
+
+Please provide specific, actionable insights about the current weather conditions and forecast for this location. Focus on local weather patterns, comfort tips, and interesting facts about this area.
+
+IMPORTANT: Respond with ONLY a valid JSON object containing these exact keys:
+- "context_warnings": [array of specific warnings about current weather conditions]
+- "suggestions": [array of practical suggestions based on the current weather]
+- "fun_facts": [array of interesting weather or location facts about this area]
+- "climate_comparison": "brief description of the local climate characteristics"
+
+Example response format:
+{{
+  "context_warnings": ["High humidity levels may make temperatures feel warmer"],
+  "suggestions": ["Stay hydrated in the current conditions", "Plan indoor activities during peak heat"],
+  "fun_facts": ["This area experiences distinct seasonal changes throughout the year"],
+  "climate_comparison": "This location has a humid continental climate with hot summers and cold winters"
+}}
+
+Focus on practical, location-specific insights about the current weather and local climate patterns.
+"""
+        else:
+            # User is viewing a different location - provide comparison insights
+            prompt = f"""
 You are a helpful weather assistant providing location-based weather insights.
 
 USER CONTEXT:
