@@ -406,6 +406,28 @@ def weather_dashboard():
             border: 1px solid rgba(220, 53, 69, 0.3);
         }
 
+        .hourly-forecast-header {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .hourly-scroll {
+            overflow-x: auto;
+            overflow-y: hidden;
+            white-space: nowrap;
+        }
+
+        .hourly-grid {
+            display: inline-flex;
+            gap: 15px;
+            min-width: 100%;
+        }
+
+        .hourly-item {
+            flex: 0 0 auto;
+            min-width: 100px;
+        }
+
         @media (max-width: 768px) {
             .weather-grid {
                 grid-template-columns: 1fr;
@@ -439,6 +461,16 @@ def weather_dashboard():
                 <button type="button" id="current-location-btn">📍 My Location</button>
             </form>
             <div id="autocomplete-dropdown" class="autocomplete-dropdown"></div>
+        </div>
+
+        <div class="hourly-forecast-container">
+            <div class="hourly-forecast-header">
+                <h3>12-Hour Forecast</h3>
+            </div>
+            <div id="hourly-forecast-content">
+                <div class="loading-spinner"></div>
+                <p>Loading hourly forecast...</p>
+            </div>
         </div>
 
         <div class="forecast-container">
@@ -585,6 +617,7 @@ def weather_dashboard():
                 // Show loading state
                 document.getElementById('current-weather-content').innerHTML = '<div class="loading-spinner"></div><p>Detecting your location...</p>';
                 document.getElementById('weather-details-content').innerHTML = '<div class="loading-spinner"></div><p>Loading weather details...</p>';
+                document.getElementById('hourly-forecast-content').innerHTML = '<div class="loading-spinner"></div><p>Loading hourly forecast...</p>';
                 document.getElementById('forecast-content').innerHTML = '<div class="loading-spinner"></div><p>Loading forecast...</p>';
                 
                 // Try to get current position
@@ -717,6 +750,28 @@ def weather_dashboard():
                  </div>
              `;
             
+            // Display hourly forecast (12 hours)
+            const hourlyForecastContent = document.getElementById('hourly-forecast-content');
+            if (forecast && forecast.hourly) {
+                hourlyForecastContent.innerHTML = `
+                    <div class="hourly-scroll">
+                        <div class="hourly-grid">
+                            ${forecast.hourly.map(hour => {
+                                const hourDate = new Date(hour.dt * 1000);
+                                const timeString = hourDate.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
+                                return `
+                                    <div class="hourly-item">
+                                        <div class="hourly-time">${timeString}</div>
+                                        <div class="hourly-temp">${Math.round(hour.temp)}°F</div>
+                                        <div class="hourly-condition">${hour.weather[0].description}</div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
             // Display forecast (8 days)
             const forecastContent = document.getElementById('forecast-content');
             if (forecast && forecast.daily) {

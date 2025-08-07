@@ -224,6 +224,16 @@ def fetch_weather_data(lat, lon):
             }
         }
         
+        # Process hourly forecast (next 12 hours)
+        hourly_forecasts = []
+        for hour in data['hourly'][:12]:  # Get next 12 hours
+            hourly_forecasts.append({
+                'dt': hour['dt'],
+                'temp': hour['temp'],
+                'weather': hour['weather'],
+                'pop': hour.get('pop', 0)  # Probability of precipitation
+            })
+        
         # Process daily forecast (8 days)
         daily_forecasts = []
         for day in data['daily'][:8]:  # Get 8 days
@@ -241,6 +251,7 @@ def fetch_weather_data(lat, lon):
             })
         
         forecast_data = {
+            'hourly': hourly_forecasts,
             'daily': daily_forecasts
         }
         
