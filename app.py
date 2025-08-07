@@ -8,7 +8,7 @@ from dashboard import weather_dashboard
 from ai_weather import get_comprehensive_ai_analysis, get_comprehensive_ai_analysis_async
 import threading
 import time
-import openai
+from openai import OpenAI
 
 app = Flask(__name__)
 
@@ -16,7 +16,7 @@ app = Flask(__name__)
 ai_futures = {}
 
 # Initialize OpenAI client
-openai.api_key = os.getenv('OPENAI_API_KEY')
+openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 def get_db_connection():
     """Get database connection using Railway's DATABASE_URL"""
@@ -611,7 +611,7 @@ def chatbot():
             return jsonify({'error': 'Message is required'}), 400
         
         # Check if OpenAI API key is available
-        if not openai.api_key:
+        if not openai_client.api_key:
             return jsonify({'error': 'OpenAI API key not configured'}), 500
         
         # Build context from weather data and AI insights
@@ -659,7 +659,7 @@ Guidelines:
 - Reference specific data from the context when relevant"""
 
         # Make OpenAI API call
-        response = openai.ChatCompletion.create(
+        response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": system_prompt},
