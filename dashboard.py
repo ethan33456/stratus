@@ -673,6 +673,7 @@ def weather_dashboard():
         let currentAnalysisId = null;
         let currentWeatherData = null;
         let currentAIInsights = null;
+        let lastViewedLocation = null;
 
         // DOM elements
         const searchInput = document.getElementById('search-input');
@@ -701,6 +702,44 @@ def weather_dashboard():
                 hideAutocomplete();
             }
         });
+
+        // localStorage utility functions
+        function saveLastViewedLocation(location, isCurrentLocation = false) {
+            try {
+                const locationData = {
+                    ...location,
+                    isCurrentLocation: isCurrentLocation,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem('stratus_last_location', JSON.stringify(locationData));
+                lastViewedLocation = locationData;
+                console.log('Saved location to localStorage:', locationData);
+            } catch (error) {
+                console.error('Error saving location to localStorage:', error);
+            }
+        }
+
+        function getLastViewedLocation() {
+            try {
+                const saved = localStorage.getItem('stratus_last_location');
+                if (saved) {
+                    const locationData = JSON.parse(saved);
+                    // Check if saved location is less than 24 hours old
+                    const hoursSinceLastSave = (Date.now() - locationData.timestamp) / (1000 * 60 * 60);
+                    if (hoursSinceLastSave < 24) {
+                        console.log('Retrieved saved location:', locationData);
+                        return locationData;
+                    } else {
+                        // Clear old saved location
+                        localStorage.removeItem('stratus_last_location');
+                        console.log('Cleared old saved location (>24 hours)');
+                    }
+                }
+            } catch (error) {
+                console.error('Error retrieving saved location:', error);
+            }
+            return null;
+        }
 
         function handleSearchInput() {
             const query = searchInput.value.trim();
@@ -752,7 +791,7 @@ def weather_dashboard():
                 item.addEventListener('click', () => {
                     const lat = item.dataset.lat;
                     const lon = item.dataset.lon;
-                    loadWeatherForLocation({ lat, lon });
+                    loadWeatherForLocation({ lat: parseFloat(lat), lon: parseFloat(lon) });
                     hideAutocomplete();
                     searchInput.value = '';
                 });
@@ -782,21 +821,51 @@ def weather_dashboard():
         async function loadWeather() {
             try {
                 // Show loading state
-                document.getElementById('current-weather-content').innerHTML = '<div class="loading-spinner"></div><p>Detecting your location...</p>';
+                document.getElementById('current-weather-content').innerHTML = '<div class="loading-spinner"></div><p>Loading weather...</p>';
                 document.getElementById('weather-details-content').innerHTML = '<div class="loading-spinner"></div><p>Loading weather details...</p>';
                 document.getElementById('hourly-forecast-content').innerHTML = '<div class="loading-spinner"></div><p>Loading hourly forecast...</p>';
                 document.getElementById('forecast-content').innerHTML = '<div class="loading-spinner"></div><p>Loading forecast...</p>';
                 
-                // Try to get current position
-                const position = await getCurrentPosition();
-                userCurrentLocation = { lat: position.coords.latitude, lon: position.coords.longitude };
+                // Check for saved location first
+                const savedLocation = getLastViewedLocation();
                 
-                // Load weather for current location
-                await loadWeatherForLocation(userCurrentLocation);
+                if (savedLocation && !savedLocation.isCurrentLocation) {
+                    // Load saved location (non-current location)
+                    console.log('Loading saved location:', savedLocation.name);
+                    await loadWeatherForLocation(savedLocation);
+                    return;
+                }
+                
+                // Try to get current position for user location
+                try {
+                    const position = await getCurrentPosition();
+                    userCurrentLocation = { lat: position.coords.latitude, lon: position.coords.longitude };
+                    
+                    if (savedLocation && savedLocation.isCurrentLocation) {
+                        // User was viewing their current location, load it again
+                        console.log('Loading current location (from saved preference)');
+                        await loadWeatherForLocation(userCurrentLocation);
+                    } else {
+                        // No saved location preference, load current location
+                        console.log('Loading current location (default)');
+                        await loadWeatherForLocation(userCurrentLocation);
+                    }
+                    
+                } catch (locationError) {
+                    console.error('Error getting current location:', locationError);
+                    
+                    if (savedLocation && !savedLocation.isCurrentLocation) {
+                        // Fallback to saved location if current location fails
+                        await loadWeatherForLocation(savedLocation);
+                    } else {
+                        // Fallback to St. Louis if everything fails
+                        await loadWeatherForQuery('St. Louis, MO');
+                    }
+                }
                 
             } catch (error) {
-                console.error('Error getting location:', error);
-                // Fallback to St. Louis
+                console.error('Error in loadWeather:', error);
+                // Final fallback to St. Louis
                 await loadWeatherForQuery('St. Louis, MO');
             }
         }
@@ -822,6 +891,14 @@ def weather_dashboard():
                 
                 if (data.success) {
                     displayWeather(data.data);
+                    
+                    // Save this location as the last viewed
+                    const isCurrentLocation = userCurrentLocation && 
+                        Math.abs(location.lat - userCurrentLocation.lat) < 0.01 && 
+                        Math.abs(location.lon - userCurrentLocation.lon) < 0.01;
+                    
+                    saveLastViewedLocation(data.data.location, isCurrentLocation);
+                    
                     // Start async AI analysis
                     if (userCurrentLocation) {
                         startAIAnalysis(userCurrentLocation, location);
@@ -840,6 +917,14 @@ def weather_dashboard():
                 
                 if (data.success) {
                     displayWeather(data.data);
+                    
+                    // Save this location as the last viewed
+                    const isCurrentLocation = userCurrentLocation && 
+                        Math.abs(data.data.location.lat - userCurrentLocation.lat) < 0.01 && 
+                        Math.abs(data.data.location.lon - userCurrentLocation.lon) < 0.01;
+                    
+                    saveLastViewedLocation(data.data.location, isCurrentLocation);
+                    
                     // Start async AI analysis
                     if (userCurrentLocation) {
                         startAIAnalysis(userCurrentLocation, data.data.location);
