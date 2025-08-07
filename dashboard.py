@@ -1107,7 +1107,7 @@ def weather_dashboard():
                 
             } catch (error) {
                 console.error('Chat error:', error);
-                addChatMessage('Sorry, I\'m having trouble connecting. Please try again.', 'bot');
+                addChatMessage('Sorry, I am having trouble connecting. Please try again.', 'bot');
             } finally {
                 // Re-enable input
                 chatInput.disabled = false;
