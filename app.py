@@ -626,20 +626,71 @@ def chatbot():
         if weather_context.get('current'):
             current = weather_context['current']
             temp = current.get('main', {}).get('temp', 'Unknown')
+            feels_like = current.get('main', {}).get('feels_like', 'Unknown')
             description = current.get('weather', [{}])[0].get('description', 'Unknown')
             humidity = current.get('main', {}).get('humidity', 'Unknown')
+            pressure = current.get('main', {}).get('pressure', 'Unknown')
             wind_speed = current.get('wind', {}).get('speed', 'Unknown')
-            context_parts.append(f"Current weather: {temp}°F, {description}, {humidity}% humidity, {wind_speed} mph wind")
+            visibility = current.get('visibility', 'Unknown')
+            clouds = current.get('clouds', {}).get('all', 'Unknown')
+            sunrise = current.get('sys', {}).get('sunrise', 'Unknown')
+            sunset = current.get('sys', {}).get('sunset', 'Unknown')
+            
+            context_parts.append(f"Current weather: {temp}°F (feels like {feels_like}°F), {description}")
+            context_parts.append(f"Humidity: {humidity}%, Pressure: {pressure} hPa, Wind: {wind_speed} mph")
+            context_parts.append(f"Visibility: {visibility/1000 if visibility != 'Unknown' else 'Unknown'} km, Cloud cover: {clouds}%")
+            if sunrise != 'Unknown' and sunset != 'Unknown':
+                sunrise_time = datetime.fromtimestamp(sunrise).strftime('%I:%M %p')
+                sunset_time = datetime.fromtimestamp(sunset).strftime('%I:%M %p')
+                context_parts.append(f"Sunrise: {sunrise_time}, Sunset: {sunset_time}")
+        
+        # Add detailed daily forecast context (today's data including UV index)
+        if weather_context.get('forecast', {}).get('daily'):
+            daily_forecast = weather_context['forecast']['daily']
+            today = daily_forecast[0] if daily_forecast else None
+            
+            if today:
+                uv_index = today.get('uvi', 'Unknown')
+                pop = today.get('pop', 0) * 100 if today.get('pop') != 'Unknown' else 'Unknown'
+                day_temp = today.get('temp', {}).get('day', 'Unknown')
+                min_temp = today.get('temp', {}).get('min', 'Unknown')
+                max_temp = today.get('temp', {}).get('max', 'Unknown')
+                
+                context_parts.append(f"Today's forecast: High {max_temp}°F, Low {min_temp}°F")
+                context_parts.append(f"UV Index: {uv_index}, Chance of precipitation: {pop}%")
         
         # Add hourly forecast context
         if weather_context.get('forecast', {}).get('hourly'):
-            hourly_count = len(weather_context['forecast']['hourly'])
-            context_parts.append(f"12-hour forecast available with {hourly_count} hours of data")
+            hourly_forecast = weather_context['forecast']['hourly']
+            context_parts.append(f"12-hour forecast: {len(hourly_forecast)} hours of detailed data available")
+            
+            # Add next few hours context
+            if len(hourly_forecast) >= 3:
+                next_hours = []
+                for i, hour in enumerate(hourly_forecast[:3]):
+                    hour_time = datetime.fromtimestamp(hour['dt']).strftime('%I %p')
+                    hour_temp = hour.get('temp', 'Unknown')
+                    hour_desc = hour.get('weather', [{}])[0].get('description', 'Unknown')
+                    hour_pop = hour.get('pop', 0) * 100 if hour.get('pop') != 'Unknown' else 0
+                    next_hours.append(f"{hour_time}: {hour_temp}°F, {hour_desc}, {hour_pop}% rain chance")
+                context_parts.append(f"Next few hours: {'; '.join(next_hours)}")
         
-        # Add daily forecast context
+        # Add extended daily forecast context
         if weather_context.get('forecast', {}).get('daily'):
-            daily_count = len(weather_context['forecast']['daily'])
-            context_parts.append(f"8-day forecast available with {daily_count} days of data")
+            daily_forecast = weather_context['forecast']['daily']
+            context_parts.append(f"8-day forecast: {len(daily_forecast)} days available")
+            
+            # Add next few days summary
+            if len(daily_forecast) >= 4:
+                upcoming_days = []
+                for i, day in enumerate(daily_forecast[1:4]):  # Skip today, get next 3 days
+                    day_date = datetime.fromtimestamp(day['dt']).strftime('%A')
+                    day_high = day.get('temp', {}).get('max', 'Unknown')
+                    day_low = day.get('temp', {}).get('min', 'Unknown')
+                    day_desc = day.get('weather', [{}])[0].get('description', 'Unknown')
+                    day_pop = day.get('pop', 0) * 100 if day.get('pop') != 'Unknown' else 0
+                    upcoming_days.append(f"{day_date}: {day_high}°F/{day_low}°F, {day_desc}, {day_pop}% rain")
+                context_parts.append(f"Upcoming days: {'; '.join(upcoming_days)}")
         
         # Add AI insights context
         if ai_insights.get('suggestions'):

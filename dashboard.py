@@ -652,7 +652,7 @@ def weather_dashboard():
         </div>
 
         <div class="chatbot-container">
-            <h3>🤖 Weather Assistant</h3>
+            <h3>Weather Assistant</h3>
             <div id="chat-messages" class="chat-messages">
                 <div class="chat-welcome">
                     Hi! I'm your weather assistant. Ask me anything about the current weather, forecast, or location! 
