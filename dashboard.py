@@ -428,6 +428,139 @@ def weather_dashboard():
             min-width: 100px;
         }
 
+        .chatbot-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            margin-top: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .chatbot-container h3 {
+            text-align: center;
+            font-size: 1.5rem;
+            color: #e8e8e8;
+            margin-bottom: 20px;
+        }
+
+        .chat-messages {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .chat-message {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .chat-message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .message-avatar.user {
+            background: #667eea;
+            color: white;
+        }
+
+        .message-avatar.bot {
+            background: #28a745;
+            color: white;
+        }
+
+        .message-content {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px 15px;
+            border-radius: 15px;
+            max-width: 80%;
+            color: #e8e8e8;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .message-content.user {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: rgba(102, 126, 234, 0.3);
+        }
+
+        .message-content.bot {
+            background: rgba(40, 167, 69, 0.2);
+            border-color: rgba(40, 167, 69, 0.3);
+        }
+
+        .chat-input-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #e8e8e8;
+            transition: all 0.3s ease;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .chat-input::placeholder {
+            color: #888;
+        }
+
+        .chat-send-btn {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.2s ease;
+        }
+
+        .chat-send-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .chat-send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .chat-welcome {
+            text-align: center;
+            color: #b8b8b8;
+            font-style: italic;
+            padding: 20px;
+        }
+
         @media (max-width: 768px) {
             .weather-grid {
                 grid-template-columns: 1fr;
@@ -443,6 +576,14 @@ def weather_dashboard():
             
             .insights-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .chat-messages {
+                height: 250px;
+            }
+
+            .message-content {
+                max-width: 90%;
             }
         }
     </style>
@@ -509,24 +650,50 @@ def weather_dashboard():
                 </div>
             </div>
         </div>
+
+        <div class="chatbot-container">
+            <h3>🤖 Weather Assistant</h3>
+            <div id="chat-messages" class="chat-messages">
+                <div class="chat-welcome">
+                    Hi! I'm your weather assistant. Ask me anything about the current weather, forecast, or location! 
+                    <br><br>
+                    <em>Try asking: "Should I bring an umbrella today?" or "What's the weather like tomorrow?"</em>
+                </div>
+            </div>
+            <div class="chat-input-container">
+                <input type="text" id="chat-input" class="chat-input" placeholder="Ask me about the weather..." maxlength="200">
+                <button id="chat-send-btn" class="chat-send-btn">Send</button>
+            </div>
+        </div>
     </div>
 
     <script>
         let userCurrentLocation = null;
         let searchTimeout = null;
         let currentAnalysisId = null;
+        let currentWeatherData = null;
+        let currentAIInsights = null;
 
         // DOM elements
         const searchInput = document.getElementById('search-input');
         const searchForm = document.getElementById('search-form');
         const autocompleteDropdown = document.getElementById('autocomplete-dropdown');
         const currentLocationBtn = document.getElementById('current-location-btn');
+        const chatInput = document.getElementById('chat-input');
+        const chatSendBtn = document.getElementById('chat-send-btn');
+        const chatMessages = document.getElementById('chat-messages');
 
         // Event listeners
         searchInput.addEventListener('input', handleSearchInput);
         searchInput.addEventListener('focus', handleSearchInput);
         searchForm.addEventListener('submit', searchLocation);
         currentLocationBtn.addEventListener('click', loadCurrentLocation);
+        chatSendBtn.addEventListener('click', sendChatMessage);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendChatMessage();
+            }
+        });
 
         // Hide autocomplete when clicking outside
         document.addEventListener('click', (e) => {
@@ -688,6 +855,9 @@ def weather_dashboard():
             const current = data.current;
             const forecast = data.forecast;
             const location = data.location;
+            
+            // Store weather data for chatbot context
+            currentWeatherData = data;
             
             // Update location display
             document.getElementById('location-display').textContent = 
@@ -852,6 +1022,9 @@ def weather_dashboard():
         function displayAIInsights(aiAnalysis) {
             const aiContent = document.getElementById('ai-content');
             
+            // Store AI insights for chatbot context
+            currentAIInsights = aiAnalysis;
+            
             aiContent.innerHTML = `
                 <div class="insights-grid">
                     <div class="insight-section">
@@ -895,6 +1068,79 @@ def weather_dashboard():
             document.getElementById('current-weather-content').innerHTML = `
                 <div class="error-message">${message}</div>
             `;
+        }
+
+        // Chatbot functions
+        async function sendChatMessage() {
+            const message = chatInput.value.trim();
+            if (!message) return;
+            
+            // Disable input while sending
+            chatInput.disabled = true;
+            chatSendBtn.disabled = true;
+            
+            // Add user message to chat
+            addChatMessage(message, 'user');
+            chatInput.value = '';
+            
+            try {
+                // Send message to chatbot API with context
+                const response = await fetch('/api/chatbot', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        weather_context: currentWeatherData || {},
+                        ai_insights: currentAIInsights || {}
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    addChatMessage(data.response, 'bot');
+                } else {
+                    addChatMessage('Sorry, I encountered an error. Please try again.', 'bot');
+                }
+                
+            } catch (error) {
+                console.error('Chat error:', error);
+                addChatMessage('Sorry, I\'m having trouble connecting. Please try again.', 'bot');
+            } finally {
+                // Re-enable input
+                chatInput.disabled = false;
+                chatSendBtn.disabled = false;
+                chatInput.focus();
+            }
+        }
+        
+        function addChatMessage(message, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${sender}`;
+            
+            const avatar = document.createElement('div');
+            avatar.className = `message-avatar ${sender}`;
+            avatar.textContent = sender === 'user' ? '👤' : '🤖';
+            
+            const content = document.createElement('div');
+            content.className = `message-content ${sender}`;
+            content.textContent = message;
+            
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(content);
+            
+            // Remove welcome message if it exists
+            const welcomeMsg = chatMessages.querySelector('.chat-welcome');
+            if (welcomeMsg && sender === 'user') {
+                welcomeMsg.remove();
+            }
+            
+            chatMessages.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
         // Load weather on page load

@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, render_template_string
+from flask import Flask, jsonify, render_template_string, request
 import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -8,11 +8,15 @@ from dashboard import weather_dashboard
 from ai_weather import get_comprehensive_ai_analysis, get_comprehensive_ai_analysis_async
 import threading
 import time
+import openai
 
 app = Flask(__name__)
 
 # Store AI analysis futures
 ai_futures = {}
+
+# Initialize OpenAI client
+openai.api_key = os.getenv('OPENAI_API_KEY')
 
 def get_db_connection():
     """Get database connection using Railway's DATABASE_URL"""
@@ -593,6 +597,91 @@ def get_stlouis_weather():
         
     except Exception as e:
         return jsonify({'error': f'Failed to fetch weather: {str(e)}'}), 500
+
+@app.route('/api/chatbot', methods=['POST'])
+def chatbot():
+    """AI chatbot for weather and location questions"""
+    try:
+        data = request.get_json()
+        user_message = data.get('message', '').strip()
+        weather_context = data.get('weather_context', {})
+        ai_insights = data.get('ai_insights', {})
+        
+        if not user_message:
+            return jsonify({'error': 'Message is required'}), 400
+        
+        # Check if OpenAI API key is available
+        if not openai.api_key:
+            return jsonify({'error': 'OpenAI API key not configured'}), 500
+        
+        # Build context from weather data and AI insights
+        context_parts = []
+        
+        # Add location context
+        if weather_context.get('location'):
+            loc = weather_context['location']
+            context_parts.append(f"Current location: {loc.get('name', '')}, {loc.get('state', '')}, {loc.get('country', '')}")
+        
+        # Add current weather context
+        if weather_context.get('current'):
+            current = weather_context['current']
+            temp = current.get('main', {}).get('temp', 'Unknown')
+            description = current.get('weather', [{}])[0].get('description', 'Unknown')
+            humidity = current.get('main', {}).get('humidity', 'Unknown')
+            wind_speed = current.get('wind', {}).get('speed', 'Unknown')
+            context_parts.append(f"Current weather: {temp}°F, {description}, {humidity}% humidity, {wind_speed} mph wind")
+        
+        # Add hourly forecast context
+        if weather_context.get('forecast', {}).get('hourly'):
+            hourly_count = len(weather_context['forecast']['hourly'])
+            context_parts.append(f"12-hour forecast available with {hourly_count} hours of data")
+        
+        # Add daily forecast context
+        if weather_context.get('forecast', {}).get('daily'):
+            daily_count = len(weather_context['forecast']['daily'])
+            context_parts.append(f"8-day forecast available with {daily_count} days of data")
+        
+        # Add AI insights context
+        if ai_insights.get('suggestions'):
+            context_parts.append(f"AI suggestions: {'; '.join(ai_insights['suggestions'][:3])}")
+        
+        # Create system prompt
+        system_prompt = f"""You are a helpful weather assistant chatbot. You can only answer questions related to weather and location information.
+
+Current context:
+{chr(10).join(context_parts)}
+
+Guidelines:
+- Only answer weather and location-related questions
+- Use the provided context to give accurate, specific answers
+- If asked about non-weather topics, politely redirect to weather questions
+- Keep responses concise and helpful
+- Reference specific data from the context when relevant"""
+
+        # Make OpenAI API call
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message}
+            ],
+            max_tokens=200,
+            temperature=0.7
+        )
+        
+        bot_response = response.choices[0].message.content.strip()
+        
+        return jsonify({
+            'success': True,
+            'response': bot_response
+        })
+        
+    except Exception as e:
+        print(f"Chatbot error: {e}")
+        return jsonify({
+            'success': False, 
+            'error': 'Sorry, I encountered an error. Please try again.'
+        }), 500
 
 if __name__ == '__main__':
     # Railway provides the PORT environment variable
