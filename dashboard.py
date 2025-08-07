@@ -812,10 +812,28 @@ def weather_dashboard():
             }
         }
 
-        function loadCurrentLocation() {
+        async function loadCurrentLocation() {
             searchInput.value = '';
             hideAutocomplete();
-            loadWeather();
+            
+            try {
+                // Show loading state
+                document.getElementById('current-weather-content').innerHTML = '<div class="loading-spinner"></div><p>Detecting your location...</p>';
+                document.getElementById('weather-details-content').innerHTML = '<div class="loading-spinner"></div><p>Loading weather details...</p>';
+                document.getElementById('hourly-forecast-content').innerHTML = '<div class="loading-spinner"></div><p>Loading hourly forecast...</p>';
+                document.getElementById('forecast-content').innerHTML = '<div class="loading-spinner"></div><p>Loading forecast...</p>';
+                
+                // Force get current position (ignore saved locations)
+                const position = await getCurrentPosition();
+                userCurrentLocation = { lat: position.coords.latitude, lon: position.coords.longitude };
+                
+                // Load weather for current location
+                await loadWeatherForLocation(userCurrentLocation);
+                
+            } catch (error) {
+                console.error('Error getting current location:', error);
+                showError('Unable to get your current location. Please allow location access or search for a city.');
+            }
         }
 
         async function loadWeather() {
@@ -900,9 +918,7 @@ def weather_dashboard():
                     saveLastViewedLocation(data.data.location, isCurrentLocation);
                     
                     // Start async AI analysis
-                    if (userCurrentLocation) {
-                        startAIAnalysis(userCurrentLocation, location);
-                    }
+                    await ensureUserLocationAndStartAI(data.data.location);
                 }
             } catch (error) {
                 console.error('Error loading weather:', error);
@@ -926,9 +942,7 @@ def weather_dashboard():
                     saveLastViewedLocation(data.data.location, isCurrentLocation);
                     
                     // Start async AI analysis
-                    if (userCurrentLocation) {
-                        startAIAnalysis(userCurrentLocation, data.data.location);
-                    }
+                    await ensureUserLocationAndStartAI(data.data.location);
                 }
             } catch (error) {
                 console.error('Error loading weather:', error);
@@ -1051,6 +1065,34 @@ def weather_dashboard():
             }
         }
 
+        async function ensureUserLocationAndStartAI(targetLocation) {
+            try {
+                // If userCurrentLocation is not set, try to get it
+                if (!userCurrentLocation) {
+                    try {
+                        const position = await getCurrentPosition();
+                        userCurrentLocation = { lat: position.coords.latitude, lon: position.coords.longitude };
+                        console.log('Got user location for AI analysis:', userCurrentLocation);
+                    } catch (error) {
+                        console.log('Could not get user location for AI analysis, using target location as user location');
+                        // If we can't get user location, use the target location as both (for local insights)
+                        userCurrentLocation = targetLocation;
+                    }
+                }
+                
+                // Now start AI analysis
+                await startAIAnalysis(userCurrentLocation, targetLocation);
+                
+            } catch (error) {
+                console.error('Error in ensureUserLocationAndStartAI:', error);
+                document.getElementById('ai-content').innerHTML = `
+                    <div class="error-message">
+                        AI analysis temporarily unavailable
+                    </div>
+                `;
+            }
+        }
+
         async function startAIAnalysis(userLocation, targetLocation) {
             try {
                 // Show loading state for AI
@@ -1061,20 +1103,26 @@ def weather_dashboard():
                     </div>
                 `;
                 
+                console.log('Starting AI analysis with user:', userLocation, 'target:', targetLocation);
+                
                 // Start async AI analysis
                 const response = await fetch(`/api/ai/analyze?user_lat=${userLocation.lat}&user_lon=${userLocation.lon}&target_lat=${targetLocation.lat}&target_lon=${targetLocation.lon}`);
                 const data = await response.json();
+                
+                console.log('AI analysis response:', data);
                 
                 if (data.success) {
                     currentAnalysisId = data.analysis_id;
                     // Poll for results
                     pollAIResults();
+                } else {
+                    throw new Error(data.error || 'AI analysis failed');
                 }
             } catch (error) {
                 console.error('Error starting AI analysis:', error);
                 document.getElementById('ai-content').innerHTML = `
                     <div class="error-message">
-                        AI analysis temporarily unavailable
+                        AI analysis temporarily unavailable: ${error.message}
                     </div>
                 `;
             }
