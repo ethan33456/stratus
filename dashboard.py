@@ -514,6 +514,8 @@ def weather_dashboard():
         .hourly-scroll {
             scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.05);
             scrollbar-width: thin;
+            overflow-y: visible;
+            padding-top: 3px;
         }
 
         .chatbot-container {
