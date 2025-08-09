@@ -408,24 +408,112 @@ def weather_dashboard():
 
         .hourly-forecast-header {
             text-align: center;
-            margin-bottom: 15px;
+             margin-bottom: 15px;
+             font-weight: 600;
+             font-size: 1.2rem;
         }
 
         .hourly-scroll {
             overflow-x: auto;
-            overflow-y: hidden;
-            white-space: nowrap;
+            padding-bottom: 8px;
         }
 
         .hourly-grid {
-            display: inline-flex;
+            display: flex;
             gap: 15px;
-            min-width: 100%;
+            padding: 0 5px;
         }
 
         .hourly-item {
             flex: 0 0 auto;
-            min-width: 100px;
+            min-width: 110px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+            backdrop-filter: blur(6px);
+            transition:
+            transform 0.2s ease,
+            background 0.2s ease,
+            border-color 0.2s ease,
+            box-shadow 0.2s ease;
+        }
+
+        .hourly-item:hover {
+            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.08);          
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+            cursor: default; 
+        }
+        
+        .hourly-item:focus-visible {
+            outline: none;
+            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.10);
+            border-color: rgba(102,126,234,0.6);           
+            box-shadow: 0 0 0 2px rgba(102,126,234,0.25);
+        }
+
+        .hourly-item .hourly-time {
+            font-size: 0.9rem;
+            font-weight: 600;
+            opacity: 0.95;
+            margin-bottom: 4px;
+        }
+        
+        .hourly-item .hourly-temp {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #667eea;                                  
+            margin: 4px 0;
+        }
+        .hourly-item .hourly-condition {
+            font-size: 0.85rem;
+            color: #b8b8b8;
+            text-transform: capitalize;
+        }
+
+        .hourly-item img {
+            width: 40px;
+            height: 40px;
+            margin: 5px 0;
+            opacity: 0.9;
+        }
+
+        .hourly-item .time {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .hourly-item .temp {
+         font-size: 1rem;
+         font-weight: 600;
+        }
+
+        .hourly-scroll::-webkit-scrollbar {
+            height: 8px; /* thickness of horizontal bar */
+        }
+
+        .hourly-scroll::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .hourly-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            transition: background 0.2s ease;
+        }
+
+        .hourly-scroll::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.6);
+        }
+
+        .hourly-scroll {
+            scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.05);
+            scrollbar-width: thin;
         }
 
         .chatbot-container {
