@@ -516,6 +516,7 @@ def weather_dashboard():
             scrollbar-width: thin;
             overflow-y: visible;
             padding-top: 3px;
+            margin-bottom: 10px;
         }
 
         .chatbot-container {
@@ -704,17 +705,6 @@ def weather_dashboard():
             </div>
         </div>
 
-        <div class="forecast-container">
-            <div class="forecast-header">
-                <h3>8-Day Forecast</h3>
-                <p id="location-display">Detecting your location...</p>
-            </div>
-            <div id="forecast-content">
-                <div class="loading-spinner"></div>
-                <p>Loading forecast...</p>
-            </div>
-        </div>
-
         <div class="weather-grid">
             <div class="weather-card current-weather">
                 <div id="current-weather-content">
@@ -728,6 +718,17 @@ def weather_dashboard():
                     <div class="loading-spinner"></div>
                     <p>Loading weather details...</p>
                 </div>
+            </div>
+        </div>
+
+        <div class="forecast-container">
+            <div class="forecast-header">
+                <h3>8-Day Forecast</h3>
+                <p id="location-display">Detecting your location...</p>
+            </div>
+            <div id="forecast-content">
+                <div class="loading-spinner"></div>
+                <p>Loading forecast...</p>
             </div>
         </div>
 
