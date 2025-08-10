@@ -60,7 +60,7 @@ def weather_dashboard():
             border: 1px solid rgba(255, 255, 255, 0.1);
             z-index: 99999;
             position: relative;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
         }
 
         .search-form {
