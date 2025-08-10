@@ -60,7 +60,7 @@ def weather_dashboard():
             border: 1px solid rgba(255, 255, 255, 0.1);
             z-index: 99999;
             position: relative;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
 
         .search-form {
@@ -517,6 +517,16 @@ def weather_dashboard():
             overflow-y: visible;
             padding-top: 3px;
             margin-bottom: 10px;
+        }
+        .hourly-forecast-container{
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 30px;
         }
 
         .chatbot-container {
