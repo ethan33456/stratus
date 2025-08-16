@@ -842,7 +842,7 @@ def weather_dashboard():
             padding: 10px 0;
             min-width: 150px;
             backdrop-filter: blur(10px);
-            z-index: 1000;
+            z-index: 99999;
             margin-top: 5px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         }

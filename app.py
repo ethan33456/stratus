@@ -377,15 +377,15 @@ def logout_user():
 @require_auth
 def get_current_user():
     """Get current user information"""
-            return jsonify({
-            'success': True,
-            'user': {
-                'id': request.current_user['id'],
-                'username': request.current_user['username'],
-                'email': request.current_user['email'],
-                'created_at': request.current_user['created_at'].isoformat()
-            }
-        })
+    return jsonify({
+        'success': True,
+        'user': {
+            'id': request.current_user['id'],
+            'username': request.current_user['username'],
+            'email': request.current_user['email'],
+            'created_at': request.current_user['created_at'].isoformat()
+        }
+    })
 
 @app.route('/api/locations/saved', methods=['GET'])
 @require_auth
