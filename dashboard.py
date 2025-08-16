@@ -680,6 +680,14 @@ def weather_dashboard():
             font-size: 14px;
             font-weight: 600;
             transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .auth-btn::after {
+            content: '▼';
+            margin-left: 8px;
+            font-size: 10px;
+            opacity: 0.7;
         }
 
         .auth-btn:hover {
@@ -835,6 +843,8 @@ def weather_dashboard():
             min-width: 150px;
             backdrop-filter: blur(10px);
             z-index: 1000;
+            margin-top: 5px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         }
 
         .user-menu.show {
@@ -1060,7 +1070,6 @@ def weather_dashboard():
         loginForm.addEventListener('submit', handleLogin);
         registerForm.addEventListener('submit', handleRegister);
         
-        authBtn.addEventListener('click', toggleUserMenu);
         logoutBtn.addEventListener('click', handleLogout);
         
         // Close user menu when clicking outside

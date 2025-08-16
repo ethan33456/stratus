@@ -377,15 +377,223 @@ def logout_user():
 @require_auth
 def get_current_user():
     """Get current user information"""
-    return jsonify({
-        'success': True,
-        'user': {
-            'id': request.current_user['id'],
-            'username': request.current_user['username'],
-            'email': request.current_user['email'],
-            'created_at': request.current_user['created_at'].isoformat()
-        }
-    })
+            return jsonify({
+            'success': True,
+            'user': {
+                'id': request.current_user['id'],
+                'username': request.current_user['username'],
+                'email': request.current_user['email'],
+                'created_at': request.current_user['created_at'].isoformat()
+            }
+        })
+
+@app.route('/api/locations/saved', methods=['GET'])
+@require_auth
+def get_saved_locations():
+    """Get all saved locations for the current user"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database connection failed'}), 500
+        
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT id, name, lat, lon, state, country, display_name, created_at, last_accessed
+            FROM saved_locations 
+            WHERE user_id = %s 
+            ORDER BY last_accessed DESC
+        ''', (request.current_user['id'],))
+        
+        locations = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'locations': [
+                {
+                    'id': loc['id'],
+                    'name': loc['name'],
+                    'lat': float(loc['lat']),
+                    'lon': float(loc['lon']),
+                    'state': loc['state'],
+                    'country': loc['country'],
+                    'display_name': loc['display_name'],
+                    'created_at': loc['created_at'].isoformat(),
+                    'last_accessed': loc['last_accessed'].isoformat()
+                }
+                for loc in locations
+            ]
+        })
+        
+    except Exception as e:
+        print(f"Error getting saved locations: {e}")
+        return jsonify({'error': 'Failed to get saved locations'}), 500
+
+@app.route('/api/locations/save', methods=['POST'])
+@require_auth
+def save_location():
+    """Save a location for the current user"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        name = data.get('name', '').strip()
+        lat = data.get('lat')
+        lon = data.get('lon')
+        state = data.get('state', '').strip()
+        country = data.get('country', '').strip()
+        display_name = data.get('display_name', '').strip()
+        
+        if not name or lat is None or lon is None:
+            return jsonify({'error': 'Name, latitude, and longitude are required'}), 400
+        
+        # Create display name if not provided
+        if not display_name:
+            display_parts = [name]
+            if state:
+                display_parts.append(state)
+            if country:
+                display_parts.append(country)
+            display_name = ', '.join(display_parts)
+        
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database connection failed'}), 500
+        
+        cursor = conn.cursor()
+        
+        # Check if location already exists for this user
+        cursor.execute('''
+            SELECT id FROM saved_locations 
+            WHERE user_id = %s AND lat = %s AND lon = %s
+        ''', (request.current_user['id'], lat, lon))
+        
+        existing = cursor.fetchone()
+        if existing:
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'Location already saved'}), 409
+        
+        # Save the location
+        cursor.execute('''
+            INSERT INTO saved_locations (user_id, name, lat, lon, state, country, display_name, created_at, last_accessed)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+            RETURNING id, name, lat, lon, state, country, display_name, created_at, last_accessed
+        ''', (request.current_user['id'], name, lat, lon, state, country, display_name))
+        
+        new_location = cursor.fetchone()
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Location saved successfully',
+            'location': {
+                'id': new_location['id'],
+                'name': new_location['name'],
+                'lat': float(new_location['lat']),
+                'lon': float(new_location['lon']),
+                'state': new_location['state'],
+                'country': new_location['country'],
+                'display_name': new_location['display_name'],
+                'created_at': new_location['created_at'].isoformat(),
+                'last_accessed': new_location['last_accessed'].isoformat()
+            }
+        })
+        
+    except Exception as e:
+        print(f"Error saving location: {e}")
+        return jsonify({'error': 'Failed to save location'}), 500
+
+@app.route('/api/locations/<int:location_id>', methods=['DELETE'])
+@require_auth
+def delete_saved_location(location_id):
+    """Delete a saved location for the current user"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database connection failed'}), 500
+        
+        cursor = conn.cursor()
+        
+        # Check if location exists and belongs to user
+        cursor.execute('''
+            SELECT id FROM saved_locations 
+            WHERE id = %s AND user_id = %s
+        ''', (location_id, request.current_user['id']))
+        
+        location = cursor.fetchone()
+        if not location:
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'Location not found'}), 404
+        
+        # Delete the location
+        cursor.execute('''
+            DELETE FROM saved_locations 
+            WHERE id = %s AND user_id = %s
+        ''', (location_id, request.current_user['id']))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Location deleted successfully'
+        })
+        
+    except Exception as e:
+        print(f"Error deleting location: {e}")
+        return jsonify({'error': 'Failed to delete location'}), 500
+
+@app.route('/api/locations/<int:location_id>/access', methods=['POST'])
+@require_auth
+def update_location_access(location_id):
+    """Update the last accessed time for a saved location"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database connection failed'}), 500
+        
+        cursor = conn.cursor()
+        
+        # Check if location exists and belongs to user
+        cursor.execute('''
+            SELECT id FROM saved_locations 
+            WHERE id = %s AND user_id = %s
+        ''', (location_id, request.current_user['id']))
+        
+        location = cursor.fetchone()
+        if not location:
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'Location not found'}), 404
+        
+        # Update last accessed time
+        cursor.execute('''
+            UPDATE saved_locations 
+            SET last_accessed = NOW() 
+            WHERE id = %s AND user_id = %s
+        ''', (location_id, request.current_user['id']))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Location access updated'
+        })
+        
+    except Exception as e:
+        print(f"Error updating location access: {e}")
+        return jsonify({'error': 'Failed to update location access'}), 500
 
 @app.route('/api/health')
 def health_check():
