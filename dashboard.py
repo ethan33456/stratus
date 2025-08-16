@@ -33,6 +33,7 @@ def weather_dashboard():
             text-align: center;
             margin-bottom: 30px;
             color: white;
+            position: relative;
         }
 
         .header h1 {
@@ -662,6 +663,199 @@ def weather_dashboard():
             padding: 20px;
         }
 
+        /* Authentication Styles */
+        .auth-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+
+        .auth-btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .auth-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .auth-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            backdrop-filter: blur(5px);
+        }
+
+        .auth-modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(30, 30, 50, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            width: 90%;
+            max-width: 400px;
+            backdrop-filter: blur(10px);
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .auth-header h2 {
+            color: #e8e8e8;
+            margin-bottom: 5px;
+        }
+
+        .auth-tabs {
+            display: flex;
+            margin-bottom: 25px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 12px;
+            background: transparent;
+            border: none;
+            color: #b8b8b8;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .auth-tab.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .auth-form {
+            display: none;
+        }
+
+        .auth-form.active {
+            display: block;
+        }
+
+        .auth-form input {
+            width: 100%;
+            padding: 12px 15px;
+            margin-bottom: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #e8e8e8;
+            font-size: 14px;
+        }
+
+        .auth-form input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .auth-form button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .auth-form button:hover {
+            transform: translateY(-2px);
+        }
+
+        .auth-form button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .auth-error {
+            color: #ff6b6b;
+            font-size: 14px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .auth-success {
+            color: #51cf66;
+            font-size: 14px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .auth-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: #b8b8b8;
+            font-size: 24px;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .auth-close:hover {
+            color: #e8e8e8;
+        }
+
+        .user-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: rgba(30, 30, 50, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px 0;
+            min-width: 150px;
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+        }
+
+        .user-menu.show {
+            display: block;
+        }
+
+        .user-menu-item {
+            padding: 10px 15px;
+            color: #e8e8e8;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .user-menu-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .user-menu-item.logout {
+            color: #ff6b6b;
+        }
+
         @media (max-width: 768px) {
             .weather-grid {
                 grid-template-columns: 1fr;
@@ -694,6 +888,13 @@ def weather_dashboard():
         <div class="header">
             <h1>Stratus Weather</h1>
             <p>Your intelligent weather companion</p>
+            <div class="auth-container">
+                <button id="auth-btn" class="auth-btn">👤 Sign In</button>
+                <div id="user-menu" class="user-menu">
+                    <div class="user-menu-item" id="user-info">Loading...</div>
+                    <div class="user-menu-item logout" id="logout-btn">Logout</div>
+                </div>
+            </div>
         </div>
 
         <div class="search-container">
@@ -768,6 +969,39 @@ def weather_dashboard():
         </div>
     </div>
 
+    <!-- Authentication Modal -->
+    <div id="auth-modal" class="auth-modal">
+        <div class="auth-modal-content">
+            <button class="auth-close" id="auth-close">&times;</button>
+            <div class="auth-header">
+                <h2>Welcome to Stratus</h2>
+                <p>Sign in or create an account</p>
+            </div>
+            
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="login">Sign In</button>
+                <button class="auth-tab" data-tab="register">Sign Up</button>
+            </div>
+            
+            <form id="login-form" class="auth-form active">
+                <div id="login-error" class="auth-error" style="display: none;"></div>
+                <div id="login-success" class="auth-success" style="display: none;"></div>
+                <input type="text" id="login-username" placeholder="Username or Email" required>
+                <input type="password" id="login-password" placeholder="Password" required>
+                <button type="submit" id="login-btn">Sign In</button>
+            </form>
+            
+            <form id="register-form" class="auth-form">
+                <div id="register-error" class="auth-error" style="display: none;"></div>
+                <div id="register-success" class="auth-success" style="display: none;"></div>
+                <input type="text" id="register-username" placeholder="Username (3-20 characters)" required>
+                <input type="email" id="register-email" placeholder="Email" required>
+                <input type="password" id="register-password" placeholder="Password (min 6 characters)" required>
+                <button type="submit" id="register-btn">Create Account</button>
+            </form>
+        </div>
+    </div>
+
     <script>
         let userCurrentLocation = null;
         let searchTimeout = null;
@@ -775,6 +1009,10 @@ def weather_dashboard():
         let currentWeatherData = null;
         let currentAIInsights = null;
         let lastViewedLocation = null;
+        
+        // Authentication variables
+        let currentUser = null;
+        let sessionToken = null;
 
         // DOM elements
         const searchInput = document.getElementById('search-input');
@@ -784,6 +1022,17 @@ def weather_dashboard():
         const chatInput = document.getElementById('chat-input');
         const chatSendBtn = document.getElementById('chat-send-btn');
         const chatMessages = document.getElementById('chat-messages');
+        
+        // Authentication DOM elements
+        const authBtn = document.getElementById('auth-btn');
+        const authModal = document.getElementById('auth-modal');
+        const authClose = document.getElementById('auth-close');
+        const authTabs = document.querySelectorAll('.auth-tab');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const userMenu = document.getElementById('user-menu');
+        const userInfo = document.getElementById('user-info');
+        const logoutBtn = document.getElementById('logout-btn');
 
         // Event listeners
         searchInput.addEventListener('input', handleSearchInput);
@@ -794,6 +1043,30 @@ def weather_dashboard():
         chatInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 sendChatMessage();
+            }
+        });
+        
+        // Authentication event listeners
+        authBtn.addEventListener('click', toggleAuthModal);
+        authClose.addEventListener('click', closeAuthModal);
+        authModal.addEventListener('click', (e) => {
+            if (e.target === authModal) closeAuthModal();
+        });
+        
+        authTabs.forEach(tab => {
+            tab.addEventListener('click', () => switchAuthTab(tab.dataset.tab));
+        });
+        
+        loginForm.addEventListener('submit', handleLogin);
+        registerForm.addEventListener('submit', handleRegister);
+        
+        authBtn.addEventListener('click', toggleUserMenu);
+        logoutBtn.addEventListener('click', handleLogout);
+        
+        // Close user menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!authBtn.contains(e.target) && !userMenu.contains(e.target)) {
+                userMenu.classList.remove('show');
             }
         });
 
@@ -1377,8 +1650,260 @@ def weather_dashboard():
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
+        // Authentication functions
+        function toggleAuthModal() {
+            if (currentUser) {
+                // User is logged in, toggle user menu
+                userMenu.classList.toggle('show');
+            } else {
+                // User is not logged in, show auth modal
+                authModal.style.display = 'block';
+            }
+        }
+        
+        function closeAuthModal() {
+            authModal.style.display = 'none';
+            // Clear forms
+            loginForm.reset();
+            registerForm.reset();
+            // Clear error/success messages
+            document.querySelectorAll('.auth-error, .auth-success').forEach(el => el.style.display = 'none');
+        }
+        
+        function switchAuthTab(tabName) {
+            // Update tab buttons
+            authTabs.forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.tab === tabName);
+            });
+            
+            // Update forms
+            loginForm.classList.toggle('active', tabName === 'login');
+            registerForm.classList.toggle('active', tabName === 'register');
+            
+            // Clear messages
+            document.querySelectorAll('.auth-error, .auth-success').forEach(el => el.style.display = 'none');
+        }
+        
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+            
+            if (!username || !password) {
+                showAuthError('login', 'Please fill in all fields');
+                return;
+            }
+            
+            const loginBtn = document.getElementById('login-btn');
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Signing In...';
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentUser = data.user;
+                    sessionToken = data.session_token;
+                    
+                    // Save to localStorage
+                    localStorage.setItem('stratus_user', JSON.stringify(currentUser));
+                    localStorage.setItem('stratus_session', sessionToken);
+                    
+                    showAuthSuccess('login', 'Login successful!');
+                    updateAuthUI();
+                    
+                    setTimeout(() => {
+                        closeAuthModal();
+                    }, 1000);
+                    
+                } else {
+                    showAuthError('login', data.error || 'Login failed');
+                }
+                
+            } catch (error) {
+                console.error('Login error:', error);
+                showAuthError('login', 'Network error. Please try again.');
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Sign In';
+            }
+        }
+        
+        async function handleRegister(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('register-username').value.trim();
+            const email = document.getElementById('register-email').value.trim();
+            const password = document.getElementById('register-password').value;
+            
+            if (!username || !email || !password) {
+                showAuthError('register', 'Please fill in all fields');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showAuthError('register', 'Password must be at least 6 characters');
+                return;
+            }
+            
+            const registerBtn = document.getElementById('register-btn');
+            registerBtn.disabled = true;
+            registerBtn.textContent = 'Creating Account...';
+            
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentUser = data.user;
+                    sessionToken = data.session_token;
+                    
+                    // Save to localStorage
+                    localStorage.setItem('stratus_user', JSON.stringify(currentUser));
+                    localStorage.setItem('stratus_session', sessionToken);
+                    
+                    showAuthSuccess('register', 'Account created successfully!');
+                    updateAuthUI();
+                    
+                    setTimeout(() => {
+                        closeAuthModal();
+                    }, 1000);
+                    
+                } else {
+                    showAuthError('register', data.error || 'Registration failed');
+                }
+                
+            } catch (error) {
+                console.error('Registration error:', error);
+                showAuthError('register', 'Network error. Please try again.');
+            } finally {
+                registerBtn.disabled = false;
+                registerBtn.textContent = 'Create Account';
+            }
+        }
+        
+        async function handleLogout() {
+            try {
+                await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${sessionToken}`
+                    }
+                });
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+            
+            // Clear local data
+            currentUser = null;
+            sessionToken = null;
+            localStorage.removeItem('stratus_user');
+            localStorage.removeItem('stratus_session');
+            
+            updateAuthUI();
+            userMenu.classList.remove('show');
+        }
+        
+        function showAuthError(formType, message) {
+            const errorEl = document.getElementById(`${formType}-error`);
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+            
+            // Hide success message if it exists
+            const successEl = document.getElementById(`${formType}-success`);
+            successEl.style.display = 'none';
+        }
+        
+        function showAuthSuccess(formType, message) {
+            const successEl = document.getElementById(`${formType}-success`);
+            successEl.textContent = message;
+            successEl.style.display = 'block';
+            
+            // Hide error message if it exists
+            const errorEl = document.getElementById(`${formType}-error`);
+            errorEl.style.display = 'none';
+        }
+        
+        function updateAuthUI() {
+            if (currentUser) {
+                authBtn.textContent = `👤 ${currentUser.username}`;
+                userInfo.textContent = `Signed in as ${currentUser.username}`;
+            } else {
+                authBtn.textContent = '👤 Sign In';
+                userInfo.textContent = 'Loading...';
+            }
+        }
+        
+        function toggleUserMenu() {
+            if (currentUser) {
+                userMenu.classList.toggle('show');
+            }
+        }
+        
+        // Check for existing session on page load
+        function checkExistingSession() {
+            const savedUser = localStorage.getItem('stratus_user');
+            const savedSession = localStorage.getItem('stratus_session');
+            
+            if (savedUser && savedSession) {
+                try {
+                    currentUser = JSON.parse(savedUser);
+                    sessionToken = savedSession;
+                    updateAuthUI();
+                    
+                    // Verify session is still valid
+                    verifySession();
+                } catch (error) {
+                    console.error('Error loading saved session:', error);
+                    localStorage.removeItem('stratus_user');
+                    localStorage.removeItem('stratus_session');
+                }
+            }
+        }
+        
+        async function verifySession() {
+            try {
+                const response = await fetch('/api/auth/me', {
+                    headers: {
+                        'Authorization': `Bearer ${sessionToken}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    // Session is invalid, clear local data
+                    currentUser = null;
+                    sessionToken = null;
+                    localStorage.removeItem('stratus_user');
+                    localStorage.removeItem('stratus_session');
+                    updateAuthUI();
+                }
+                
+            } catch (error) {
+                console.error('Session verification error:', error);
+            }
+        }
+
         // Load weather on page load
         loadWeather();
+        
+        // Check for existing authentication session
+        checkExistingSession();
     </script>
 </body>
 </html>
