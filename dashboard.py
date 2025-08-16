@@ -1068,7 +1068,7 @@ def weather_dashboard():
                 <button id="auth-btn" class="auth-btn">👤 Sign In</button>
                 <div id="user-menu" class="user-menu">
                     <div class="user-menu-item" id="user-info">Loading...</div>
-                    <div class="user-menu-item" id="saved-locations-btn">📍 Saved Locations</div>
+                    <div class="user-menu-item" id="saved-locations-btn">Saved Locations</div>
                     <div class="user-menu-item logout" id="logout-btn">Logout</div>
                 </div>
             </div>
@@ -1642,7 +1642,9 @@ def weather_dashboard():
             }
             
             // Update save location button
-            updateSaveLocationButton();
+            updateSaveLocationButton().catch(error => {
+                console.error('Error updating save location button:', error);
+            });
         }
 
         async function ensureUserLocationAndStartAI(targetLocation) {
@@ -2056,7 +2058,9 @@ def weather_dashboard():
             }
             
             // Update save location button visibility
-            updateSaveLocationButton();
+            updateSaveLocationButton().catch(error => {
+                console.error('Error updating save location button:', error);
+            });
         }
         
         function toggleUserMenu() {
@@ -2209,13 +2213,54 @@ def weather_dashboard():
             closeSavedLocationsPanel();
         }
 
-        function updateSaveLocationButton() {
-            if (currentUser && currentWeatherData) {
-                saveLocationBtn.style.display = 'inline-block';
-                // Check if current location is already saved (this would require additional API call)
-                // For now, just show the button
-            } else {
+        async function updateSaveLocationButton() {
+            if (!currentUser || !currentWeatherData) {
                 saveLocationBtn.style.display = 'none';
+                return;
+            }
+
+            try {
+                // Get all saved locations to check if current location is already saved
+                const response = await fetch('/api/locations/saved', {
+                    headers: {
+                        'Authorization': `Bearer ${sessionToken}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const currentLocation = currentWeatherData.location;
+                    const isAlreadySaved = data.locations.some(savedLoc => 
+                        Math.abs(savedLoc.lat - currentLocation.lat) < 0.001 && 
+                        Math.abs(savedLoc.lon - currentLocation.lon) < 0.001
+                    );
+
+                    if (isAlreadySaved) {
+                        saveLocationBtn.textContent = '✅ Saved';
+                        saveLocationBtn.classList.add('saved');
+                        saveLocationBtn.disabled = true;
+                        saveLocationBtn.style.display = 'inline-block';
+                    } else {
+                        saveLocationBtn.textContent = '💾 Save Location';
+                        saveLocationBtn.classList.remove('saved');
+                        saveLocationBtn.disabled = false;
+                        saveLocationBtn.style.display = 'inline-block';
+                    }
+                } else {
+                    // If we can't check, just show the button as normal
+                    saveLocationBtn.textContent = '💾 Save Location';
+                    saveLocationBtn.classList.remove('saved');
+                    saveLocationBtn.disabled = false;
+                    saveLocationBtn.style.display = 'inline-block';
+                }
+            } catch (error) {
+                console.error('Error checking saved locations:', error);
+                // If there's an error, just show the button as normal
+                saveLocationBtn.textContent = '💾 Save Location';
+                saveLocationBtn.classList.remove('saved');
+                saveLocationBtn.disabled = false;
+                saveLocationBtn.style.display = 'inline-block';
             }
         }
         
