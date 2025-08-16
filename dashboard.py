@@ -668,6 +668,7 @@ def weather_dashboard():
             position: absolute;
             top: 20px;
             right: 20px;
+            z-index: 9999999;
         }
 
         .auth-btn {
@@ -856,6 +857,7 @@ def weather_dashboard():
             color: #e8e8e8;
             cursor: pointer;
             transition: background-color 0.2s ease;
+            text-align: left;
         }
 
         .user-menu-item:hover {
@@ -864,6 +866,170 @@ def weather_dashboard():
 
         .user-menu-item.logout {
             color: #ff6b6b;
+        }
+
+        /* Saved Locations Styles */
+        .saved-locations-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-left: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .saved-locations-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .saved-locations-panel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100vh;
+            background: rgba(30, 30, 50, 0.95);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            transition: right 0.3s ease;
+            z-index: 9999;
+            overflow-y: auto;
+        }
+
+        .saved-locations-panel.show {
+            right: 0;
+        }
+
+        .saved-locations-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .saved-locations-header h3 {
+            color: #e8e8e8;
+            margin: 0;
+        }
+
+        .saved-locations-close {
+            background: none;
+            border: none;
+            color: #b8b8b8;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .saved-locations-close:hover {
+            color: #e8e8e8;
+        }
+
+        .saved-locations-list {
+            padding: 20px;
+        }
+
+        .saved-location-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .saved-location-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(102, 126, 234, 0.5);
+        }
+
+        .saved-location-name {
+            color: #e8e8e8;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .saved-location-details {
+            color: #b8b8b8;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .saved-location-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .saved-location-load {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 10px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .saved-location-delete {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 10px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .saved-location-load:hover {
+            background: #5a6fd8;
+        }
+
+        .saved-location-delete:hover {
+            background: #e55a5a;
+        }
+
+        .save-location-btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .save-location-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.4);
+        }
+
+        .save-location-btn.saved {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            cursor: default;
+        }
+
+        .save-location-btn.saved:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .no-saved-locations {
+            text-align: center;
+            color: #b8b8b8;
+            padding: 40px 20px;
         }
 
         @media (max-width: 768px) {
@@ -902,6 +1068,7 @@ def weather_dashboard():
                 <button id="auth-btn" class="auth-btn">👤 Sign In</button>
                 <div id="user-menu" class="user-menu">
                     <div class="user-menu-item" id="user-info">Loading...</div>
+                    <div class="user-menu-item" id="saved-locations-btn">📍 Saved Locations</div>
                     <div class="user-menu-item logout" id="logout-btn">Logout</div>
                 </div>
             </div>
@@ -945,7 +1112,10 @@ def weather_dashboard():
         <div class="forecast-container">
             <div class="forecast-header">
                 <h3>8-Day Forecast</h3>
-                <p id="location-display">Detecting your location...</p>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <p id="location-display">Detecting your location...</p>
+                    <button id="save-location-btn" class="save-location-btn" style="display: none;">💾 Save Location</button>
+                </div>
             </div>
             <div id="forecast-content">
                 <div class="loading-spinner"></div>
@@ -1012,6 +1182,20 @@ def weather_dashboard():
         </div>
     </div>
 
+    <!-- Saved Locations Panel -->
+    <div id="saved-locations-panel" class="saved-locations-panel">
+        <div class="saved-locations-header">
+            <h3>Saved Locations</h3>
+            <button class="saved-locations-close" id="saved-locations-close">&times;</button>
+        </div>
+        <div id="saved-locations-list" class="saved-locations-list">
+            <div class="no-saved-locations">
+                <p>No saved locations yet.</p>
+                <p>Search for a location and click "Save Location" to add it here.</p>
+            </div>
+        </div>
+    </div>
+
     <script>
         let userCurrentLocation = null;
         let searchTimeout = null;
@@ -1043,6 +1227,11 @@ def weather_dashboard():
         const userMenu = document.getElementById('user-menu');
         const userInfo = document.getElementById('user-info');
         const logoutBtn = document.getElementById('logout-btn');
+        const savedLocationsBtn = document.getElementById('saved-locations-btn');
+        const savedLocationsPanel = document.getElementById('saved-locations-panel');
+        const savedLocationsClose = document.getElementById('saved-locations-close');
+        const savedLocationsList = document.getElementById('saved-locations-list');
+        const saveLocationBtn = document.getElementById('save-location-btn');
 
         // Event listeners
         searchInput.addEventListener('input', handleSearchInput);
@@ -1071,6 +1260,11 @@ def weather_dashboard():
         registerForm.addEventListener('submit', handleRegister);
         
         logoutBtn.addEventListener('click', handleLogout);
+        
+        // Saved locations event listeners
+        savedLocationsBtn.addEventListener('click', toggleSavedLocationsPanel);
+        savedLocationsClose.addEventListener('click', closeSavedLocationsPanel);
+        saveLocationBtn.addEventListener('click', saveCurrentLocation);
         
         // Close user menu when clicking outside
         document.addEventListener('click', (e) => {
@@ -1446,6 +1640,9 @@ def weather_dashboard():
                     </div>
                 `;
             }
+            
+            // Update save location button
+            updateSaveLocationButton();
         }
 
         async function ensureUserLocationAndStartAI(targetLocation) {
@@ -1857,11 +2054,168 @@ def weather_dashboard():
                 authBtn.textContent = '👤 Sign In';
                 userInfo.textContent = 'Loading...';
             }
+            
+            // Update save location button visibility
+            updateSaveLocationButton();
         }
         
         function toggleUserMenu() {
             if (currentUser) {
                 userMenu.classList.toggle('show');
+            }
+        }
+
+        // Saved Locations Functions
+        function toggleSavedLocationsPanel() {
+            if (currentUser) {
+                savedLocationsPanel.classList.toggle('show');
+                if (savedLocationsPanel.classList.contains('show')) {
+                    loadSavedLocations();
+                }
+            } else {
+                // Show auth modal if not logged in
+                authModal.style.display = 'block';
+            }
+        }
+
+        function closeSavedLocationsPanel() {
+            savedLocationsPanel.classList.remove('show');
+        }
+
+        async function loadSavedLocations() {
+            if (!currentUser || !sessionToken) return;
+
+            try {
+                const response = await fetch('/api/locations/saved', {
+                    headers: {
+                        'Authorization': `Bearer ${sessionToken}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displaySavedLocations(data.locations);
+                } else {
+                    console.error('Failed to load saved locations:', data.error);
+                    savedLocationsList.innerHTML = '<div class="no-saved-locations"><p>Error loading saved locations.</p></div>';
+                }
+            } catch (error) {
+                console.error('Error loading saved locations:', error);
+                savedLocationsList.innerHTML = '<div class="no-saved-locations"><p>Error loading saved locations.</p></div>';
+            }
+        }
+
+        function displaySavedLocations(locations) {
+            if (locations.length === 0) {
+                savedLocationsList.innerHTML = '<div class="no-saved-locations"><p>No saved locations yet.</p><p>Search for a location and click "Save Location" to add it here.</p></div>';
+                return;
+            }
+
+            savedLocationsList.innerHTML = locations.map(location => `
+                <div class="saved-location-item" data-location-id="${location.id}">
+                    <div class="saved-location-name">${location.display_name || location.name}</div>
+                    <div class="saved-location-details">
+                        ${location.state ? location.state + ', ' : ''}${location.country}
+                        <br>
+                        <small>Last accessed: ${new Date(location.last_accessed).toLocaleDateString()}</small>
+                    </div>
+                    <div class="saved-location-actions">
+                        <button class="saved-location-load" onclick="loadSavedLocation(${location.lat}, ${location.lon})">Load Weather</button>
+                        <button class="saved-location-delete" onclick="deleteSavedLocation(${location.id})">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function saveCurrentLocation() {
+            if (!currentUser || !sessionToken || !currentWeatherData) {
+                console.error('Cannot save location: not logged in or no weather data');
+                return;
+            }
+
+            const location = currentWeatherData.data.location;
+            
+            try {
+                const response = await fetch('/api/locations/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${sessionToken}`
+                    },
+                    body: JSON.stringify({
+                        name: location.name,
+                        lat: location.lat,
+                        lon: location.lon,
+                        state: location.state,
+                        country: location.country,
+                        display_name: `${location.name}${location.state ? ', ' + location.state : ''}${location.country ? ', ' + location.country : ''}`
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    saveLocationBtn.textContent = '✅ Saved';
+                    saveLocationBtn.classList.add('saved');
+                    saveLocationBtn.disabled = true;
+                    
+                    // Update saved locations panel if it's open
+                    if (savedLocationsPanel.classList.contains('show')) {
+                        loadSavedLocations();
+                    }
+                } else {
+                    console.error('Failed to save location:', data.error);
+                    alert('Failed to save location: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error saving location:', error);
+                alert('Error saving location. Please try again.');
+            }
+        }
+
+        async function deleteSavedLocation(locationId) {
+            if (!currentUser || !sessionToken) return;
+
+            if (!confirm('Are you sure you want to delete this saved location?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/locations/${locationId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${sessionToken}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Reload saved locations
+                    loadSavedLocations();
+                } else {
+                    console.error('Failed to delete location:', data.error);
+                    alert('Failed to delete location: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error deleting location:', error);
+                alert('Error deleting location. Please try again.');
+            }
+        }
+
+        function loadSavedLocation(lat, lon) {
+            loadWeatherForLocation({ lat, lon });
+            closeSavedLocationsPanel();
+        }
+
+        function updateSaveLocationButton() {
+            if (currentUser && currentWeatherData) {
+                saveLocationBtn.style.display = 'inline-block';
+                // Check if current location is already saved (this would require additional API call)
+                // For now, just show the button
+            } else {
+                saveLocationBtn.style.display = 'none';
             }
         }
         
