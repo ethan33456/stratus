@@ -111,11 +111,60 @@ def init_database():
             );
         ''')
         
+        # Create users table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(50) UNIQUE NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                password_hash VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT NOW(),
+                last_login TIMESTAMP,
+                is_active BOOLEAN DEFAULT TRUE
+            );
+        ''')
+        
+        # Create saved locations table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS saved_locations (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                name VARCHAR(255) NOT NULL,
+                lat DECIMAL(10, 8) NOT NULL,
+                lon DECIMAL(11, 8) NOT NULL,
+                state VARCHAR(100),
+                country VARCHAR(100),
+                display_name VARCHAR(255),
+                created_at TIMESTAMP DEFAULT NOW(),
+                last_accessed TIMESTAMP DEFAULT NOW(),
+                UNIQUE(user_id, lat, lon)
+            );
+        ''')
+        
+        # Create user sessions table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_sessions (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                session_token VARCHAR(255) UNIQUE NOT NULL,
+                created_at TIMESTAMP DEFAULT NOW(),
+                expires_at TIMESTAMP NOT NULL,
+                is_active BOOLEAN DEFAULT TRUE
+            );
+        ''')
+        
+        # Create indexes for better performance
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_saved_locations_user_id ON saved_locations(user_id);')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON user_sessions(session_token);')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);')
+        
         conn.commit()
         cursor.close()
         conn.close()
         
-        return jsonify({'message': 'Database initialized successfully'})
+        return jsonify({'message': 'Database initialized successfully with user tables'})
         
     except Exception as e:
         return jsonify({'error': f'Database initialization failed: {str(e)}'}), 500
