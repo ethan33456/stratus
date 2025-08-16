@@ -896,7 +896,7 @@ def weather_dashboard():
             border-left: 1px solid rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
             transition: right 0.3s ease;
-            z-index: 9999999;
+            z-index: 9999;
             overflow-y: auto;
         }
 
