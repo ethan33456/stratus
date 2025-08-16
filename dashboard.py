@@ -35,7 +35,11 @@ def weather_dashboard():
             color: white;
             position: relative;
         }
-
+        @media only screen and (max-width: 850px) {
+            .header h1{
+                padding-top: 80px;
+            }
+        }
         .header h1 {
             font-size: 2.5rem;
             margin-bottom: 10px;
@@ -896,7 +900,7 @@ def weather_dashboard():
             border-left: 1px solid rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
             transition: right 0.3s ease;
-            z-index: 9999;
+            z-index: 9999999;
             overflow-y: auto;
         }
 
@@ -1587,27 +1591,11 @@ def weather_dashboard():
                      </div>
                                            <div class="detail-item">
                           <div class="detail-label">Sunrise</div>
-                          <div class="detail-value">${(() => {
-                              const timezone = data.timezone || 'UTC';
-                              const utcTime = current.sys.sunrise * 1000;
-                              return new Date(utcTime).toLocaleTimeString('en-US', {
-                                  hour: '2-digit', 
-                                  minute: '2-digit',
-                                  timeZone: timezone
-                              });
-                          })()}</div>
+                          <div class="detail-value">${new Date(current.sys.sunrise * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
                       </div>
                       <div class="detail-item">
                           <div class="detail-label">Sunset</div>
-                          <div class="detail-value">${(() => {
-                              const timezone = data.timezone || 'UTC';
-                              const utcTime = current.sys.sunset * 1000;
-                              return new Date(utcTime).toLocaleTimeString('en-US', {
-                                  hour: '2-digit', 
-                                  minute: '2-digit',
-                                  timeZone: timezone
-                              });
-                          })()}</div>
+                          <div class="detail-value">${new Date(current.sys.sunset * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
                       </div>
                  </div>
              `;
@@ -1615,20 +1603,13 @@ def weather_dashboard():
             // Display hourly forecast (12 hours)
             const hourlyForecastContent = document.getElementById('hourly-forecast-content');
             if (forecast && forecast.hourly) {
-                // Get timezone from the weather data
-                const timezone = data.timezone || 'UTC';
-                
                 hourlyForecastContent.innerHTML = `
                     <div class="hourly-scroll">
                         <div class="hourly-grid">
                             ${forecast.hourly.map(hour => {
-                                // Convert UTC timestamp to location's timezone
-                                const utcTime = hour.dt * 1000; // Convert to milliseconds
-                                const hourDate = new Date(utcTime);
-                                const timeString = hourDate.toLocaleTimeString('en-US', { 
+                                const timeString = new Date(hour.dt * 1000).toLocaleTimeString('en-US', { 
                                     hour: 'numeric', 
-                                    hour12: true,
-                                    timeZone: timezone
+                                    hour12: true
                                 });
                                 return `
                                     <div class="hourly-item">

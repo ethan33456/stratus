@@ -849,13 +849,9 @@ def fetch_weather_data(lat, lon):
             'daily': daily_forecasts
         }
         
-        # Get timezone information
-        timezone = data.get('timezone', 'UTC')  # Timezone name like "America/New_York"
-        
         return {
             'current': current_weather,
-            'forecast': forecast_data,
-            'timezone': timezone
+            'forecast': forecast_data
         }, None
         
     except requests.exceptions.RequestException as e:
@@ -897,7 +893,6 @@ def get_weather_by_coords():
             'location': location,
             'current': weather_data['current'],
             'forecast': weather_data['forecast'],
-            'timezone': weather_data.get('timezone', 'UTC'),
             'fetched_at': datetime.now().isoformat()
         }
         
