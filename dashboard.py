@@ -1587,11 +1587,21 @@ def weather_dashboard():
                      </div>
                      <div class="detail-item">
                          <div class="detail-label">Sunrise</div>
-                         <div class="detail-value">${new Date(current.sys.sunrise * 1000).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'})}</div>
+                         <div class="detail-value">${(() => {
+                             const timezoneOffset = data.timezone_offset || 0;
+                             const utcTime = current.sys.sunrise * 1000;
+                             const locationTime = utcTime + (timezoneOffset * 1000);
+                             return new Date(locationTime).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'});
+                         })()}</div>
                      </div>
                      <div class="detail-item">
                          <div class="detail-label">Sunset</div>
-                         <div class="detail-value">${new Date(current.sys.sunset * 1000).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'})}</div>
+                         <div class="detail-value">${(() => {
+                             const timezoneOffset = data.timezone_offset || 0;
+                             const utcTime = current.sys.sunset * 1000;
+                             const locationTime = utcTime + (timezoneOffset * 1000);
+                             return new Date(locationTime).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'});
+                         })()}</div>
                      </div>
                  </div>
              `;
@@ -2248,14 +2258,14 @@ def weather_dashboard():
                         saveLocationBtn.disabled = true;
                         saveLocationBtn.style.display = 'inline-block';
                     } else {
-                        saveLocationBtn.textContent = '💾 Save Location';
+                        saveLocationBtn.textContent = 'Save Location';
                         saveLocationBtn.classList.remove('saved');
                         saveLocationBtn.disabled = false;
                         saveLocationBtn.style.display = 'inline-block';
                     }
                 } else {
                     // If we can't check, just show the button as normal
-                    saveLocationBtn.textContent = '💾 Save Location';
+                    saveLocationBtn.textContent = 'Save Location';
                     saveLocationBtn.classList.remove('saved');
                     saveLocationBtn.disabled = false;
                     saveLocationBtn.style.display = 'inline-block';
@@ -2263,7 +2273,7 @@ def weather_dashboard():
             } catch (error) {
                 console.error('Error checking saved locations:', error);
                 // If there's an error, just show the button as normal
-                saveLocationBtn.textContent = '💾 Save Location';
+                saveLocationBtn.textContent = 'Save Location';
                 saveLocationBtn.classList.remove('saved');
                 saveLocationBtn.disabled = false;
                 saveLocationBtn.style.display = 'inline-block';
