@@ -9,6 +9,10 @@ from ai_weather import get_comprehensive_ai_analysis, get_comprehensive_ai_analy
 import threading
 import time
 from openai import OpenAI
+import bcrypt
+import secrets
+import re
+from functools import wraps
 
 app = Flask(__name__)
 
@@ -17,6 +21,10 @@ ai_futures = {}
 
 # Initialize OpenAI client
 openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+
+# Authentication configuration
+app.secret_key = os.getenv('SECRET_KEY', secrets.token_hex(32))
+SESSION_DURATION_HOURS = 24  # Sessions expire after 24 hours
 
 def get_db_connection():
     """Get database connection using Railway's DATABASE_URL"""
@@ -41,6 +49,85 @@ def get_db_connection():
         print(f"Error type: {type(e)}")
         return None
 
+# Authentication utility functions
+def hash_password(password):
+    """Hash a password using bcrypt"""
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def verify_password(password, hashed_password):
+    """Verify a password against its hash"""
+    return bcrypt.checkpw(password.encode('utf-8'), hashed_password.encode('utf-8'))
+
+def generate_session_token():
+    """Generate a secure session token"""
+    return secrets.token_urlsafe(32)
+
+def validate_email(email):
+    """Validate email format"""
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(pattern, email) is not None
+
+def validate_username(username):
+    """Validate username format (3-20 characters, alphanumeric and underscore only)"""
+    pattern = r'^[a-zA-Z0-9_]{3,20}$'
+    return re.match(pattern, username) is not None
+
+def validate_password(password):
+    """Validate password strength (minimum 6 characters)"""
+    return len(password) >= 6
+
+def get_user_by_session_token(session_token):
+    """Get user by session token"""
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return None
+            
+        cursor = conn.cursor()
+        
+        # Get active session and user info
+        cursor.execute('''
+            SELECT u.id, u.username, u.email, u.created_at
+            FROM users u
+            JOIN user_sessions s ON u.id = s.user_id
+            WHERE s.session_token = %s 
+            AND s.is_active = TRUE 
+            AND s.expires_at > NOW()
+        ''', (session_token,))
+        
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        
+        return user
+        
+    except Exception as e:
+        print(f"Error getting user by session token: {e}")
+        return None
+
+def require_auth(f):
+    """Decorator to require authentication"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Get session token from request headers or cookies
+        session_token = request.headers.get('Authorization', '').replace('Bearer ', '')
+        if not session_token:
+            session_token = request.cookies.get('session_token')
+        
+        if not session_token:
+            return jsonify({'error': 'Authentication required'}), 401
+        
+        # Verify session token
+        user = get_user_by_session_token(session_token)
+        if not user:
+            return jsonify({'error': 'Invalid or expired session'}), 401
+        
+        # Add user to request context
+        request.current_user = user
+        return f(*args, **kwargs)
+    
+    return decorated_function
+
 @app.route('/')
 def home():
     """Homepage - displays the weather dashboard"""
@@ -52,6 +139,252 @@ def api_home():
         'message': 'Welcome to Stratus Weather App!', 
         'status': 'running',
         'version': '1.0.0'
+    })
+
+@app.route('/api/auth/register', methods=['POST'])
+def register_user():
+    """Register a new user account"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        username = data.get('username', '').strip()
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+        
+        # Validate input
+        if not username or not email or not password:
+            return jsonify({'error': 'Username, email, and password are required'}), 400
+        
+        if not validate_username(username):
+            return jsonify({'error': 'Username must be 3-20 characters, alphanumeric and underscore only'}), 400
+        
+        if not validate_email(email):
+            return jsonify({'error': 'Invalid email format'}), 400
+        
+        if not validate_password(password):
+            return jsonify({'error': 'Password must be at least 6 characters'}), 400
+        
+        # Check if username or email already exists
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database connection failed'}), 500
+        
+        cursor = conn.cursor()
+        
+        # Check username
+        cursor.execute('SELECT id FROM users WHERE username = %s', (username,))
+        if cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'Username already exists'}), 409
+        
+        # Check email
+        cursor.execute('SELECT id FROM users WHERE email = %s', (email,))
+        if cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'Email already exists'}), 409
+        
+        # Hash password and create user
+        password_hash = hash_password(password)
+        
+        cursor.execute('''
+            INSERT INTO users (username, email, password_hash, created_at)
+            VALUES (%s, %s, %s, NOW())
+            RETURNING id, username, email, created_at
+        ''', (username, email, password_hash))
+        
+        new_user = cursor.fetchone()
+        
+        # Create session token
+        session_token = generate_session_token()
+        expires_at = datetime.now() + timedelta(hours=SESSION_DURATION_HOURS)
+        
+        cursor.execute('''
+            INSERT INTO user_sessions (user_id, session_token, expires_at)
+            VALUES (%s, %s, %s)
+        ''', (new_user['id'], session_token, expires_at))
+        
+        # Update last login
+        cursor.execute('''
+            UPDATE users SET last_login = NOW() WHERE id = %s
+        ''', (new_user['id'],))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        # Create response
+        response = jsonify({
+            'success': True,
+            'message': 'User registered successfully',
+            'user': {
+                'id': new_user['id'],
+                'username': new_user['username'],
+                'email': new_user['email'],
+                'created_at': new_user['created_at'].isoformat()
+            },
+            'session_token': session_token
+        })
+        
+        # Set secure cookie
+        response.set_cookie(
+            'session_token', 
+            session_token, 
+            max_age=SESSION_DURATION_HOURS * 3600,
+            httponly=True,
+            secure=True,
+            samesite='Lax'
+        )
+        
+        return response
+        
+    except Exception as e:
+        print(f"Registration error: {e}")
+        return jsonify({'error': 'Registration failed'}), 500
+
+@app.route('/api/auth/login', methods=['POST'])
+def login_user():
+    """Login user and create session"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        username_or_email = data.get('username', '').strip()
+        password = data.get('password', '')
+        
+        if not username_or_email or not password:
+            return jsonify({'error': 'Username/email and password are required'}), 400
+        
+        # Determine if input is email or username
+        is_email = '@' in username_or_email
+        username_or_email = username_or_email.lower() if is_email else username_or_email
+        
+        # Get user from database
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'error': 'Database connection failed'}), 500
+        
+        cursor = conn.cursor()
+        
+        if is_email:
+            cursor.execute('SELECT id, username, email, password_hash, created_at FROM users WHERE email = %s AND is_active = TRUE', (username_or_email,))
+        else:
+            cursor.execute('SELECT id, username, email, password_hash, created_at FROM users WHERE username = %s AND is_active = TRUE', (username_or_email,))
+        
+        user = cursor.fetchone()
+        
+        if not user:
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'Invalid username/email or password'}), 401
+        
+        # Verify password
+        if not verify_password(password, user['password_hash']):
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'Invalid username/email or password'}), 401
+        
+        # Create new session token
+        session_token = generate_session_token()
+        expires_at = datetime.now() + timedelta(hours=SESSION_DURATION_HOURS)
+        
+        # Deactivate old sessions for this user
+        cursor.execute('UPDATE user_sessions SET is_active = FALSE WHERE user_id = %s', (user['id'],))
+        
+        # Create new session
+        cursor.execute('''
+            INSERT INTO user_sessions (user_id, session_token, expires_at)
+            VALUES (%s, %s, %s)
+        ''', (user['id'], session_token, expires_at))
+        
+        # Update last login
+        cursor.execute('UPDATE users SET last_login = NOW() WHERE id = %s', (user['id'],))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        # Create response
+        response = jsonify({
+            'success': True,
+            'message': 'Login successful',
+            'user': {
+                'id': user['id'],
+                'username': user['username'],
+                'email': user['email'],
+                'created_at': user['created_at'].isoformat()
+            },
+            'session_token': session_token
+        })
+        
+        # Set secure cookie
+        response.set_cookie(
+            'session_token', 
+            session_token, 
+            max_age=SESSION_DURATION_HOURS * 3600,
+            httponly=True,
+            secure=True,
+            samesite='Lax'
+        )
+        
+        return response
+        
+    except Exception as e:
+        print(f"Login error: {e}")
+        return jsonify({'error': 'Login failed'}), 500
+
+@app.route('/api/auth/logout', methods=['POST'])
+def logout_user():
+    """Logout user and invalidate session"""
+    try:
+        # Get session token from request
+        session_token = request.headers.get('Authorization', '').replace('Bearer ', '')
+        if not session_token:
+            session_token = request.cookies.get('session_token')
+        
+        if session_token:
+            # Invalidate session in database
+            conn = get_db_connection()
+            if conn:
+                cursor = conn.cursor()
+                cursor.execute('UPDATE user_sessions SET is_active = FALSE WHERE session_token = %s', (session_token,))
+                conn.commit()
+                cursor.close()
+                conn.close()
+        
+        # Create response
+        response = jsonify({
+            'success': True,
+            'message': 'Logout successful'
+        })
+        
+        # Clear cookie
+        response.delete_cookie('session_token')
+        
+        return response
+        
+    except Exception as e:
+        print(f"Logout error: {e}")
+        return jsonify({'error': 'Logout failed'}), 500
+
+@app.route('/api/auth/me', methods=['GET'])
+@require_auth
+def get_current_user():
+    """Get current user information"""
+    return jsonify({
+        'success': True,
+        'user': {
+            'id': request.current_user['id'],
+            'username': request.current_user['username'],
+            'email': request.current_user['email'],
+            'created_at': request.current_user['created_at'].isoformat()
+        }
     })
 
 @app.route('/api/health')
