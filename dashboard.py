@@ -1585,32 +1585,38 @@ def weather_dashboard():
                          <div class="detail-label">UV Index</div>
                          <div class="detail-value">${(forecast.daily[0]?.uvi || 0).toFixed(1)}</div>
                      </div>
-                     <div class="detail-item">
-                         <div class="detail-label">Sunrise</div>
-                         <div class="detail-value">${(() => {
-                             const timezoneOffset = data.timezone_offset || 0;
-                             const utcTime = current.sys.sunrise * 1000;
-                             const locationTime = utcTime + (timezoneOffset * 1000);
-                             return new Date(locationTime).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'});
-                         })()}</div>
-                     </div>
-                     <div class="detail-item">
-                         <div class="detail-label">Sunset</div>
-                         <div class="detail-value">${(() => {
-                             const timezoneOffset = data.timezone_offset || 0;
-                             const utcTime = current.sys.sunset * 1000;
-                             const locationTime = utcTime + (timezoneOffset * 1000);
-                             return new Date(locationTime).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'});
-                         })()}</div>
-                     </div>
+                                           <div class="detail-item">
+                          <div class="detail-label">Sunrise</div>
+                          <div class="detail-value">${(() => {
+                              const timezone = data.timezone || 'UTC';
+                              const utcTime = current.sys.sunrise * 1000;
+                              return new Date(utcTime).toLocaleTimeString('en-US', {
+                                  hour: '2-digit', 
+                                  minute: '2-digit',
+                                  timeZone: timezone
+                              });
+                          })()}</div>
+                      </div>
+                      <div class="detail-item">
+                          <div class="detail-label">Sunset</div>
+                          <div class="detail-value">${(() => {
+                              const timezone = data.timezone || 'UTC';
+                              const utcTime = current.sys.sunset * 1000;
+                              return new Date(utcTime).toLocaleTimeString('en-US', {
+                                  hour: '2-digit', 
+                                  minute: '2-digit',
+                                  timeZone: timezone
+                              });
+                          })()}</div>
+                      </div>
                  </div>
              `;
             
             // Display hourly forecast (12 hours)
             const hourlyForecastContent = document.getElementById('hourly-forecast-content');
             if (forecast && forecast.hourly) {
-                // Get timezone offset from the weather data
-                const timezoneOffset = data.timezone_offset || 0;
+                // Get timezone from the weather data
+                const timezone = data.timezone || 'UTC';
                 
                 hourlyForecastContent.innerHTML = `
                     <div class="hourly-scroll">
@@ -1618,9 +1624,12 @@ def weather_dashboard():
                             ${forecast.hourly.map(hour => {
                                 // Convert UTC timestamp to location's timezone
                                 const utcTime = hour.dt * 1000; // Convert to milliseconds
-                                const locationTime = utcTime + (timezoneOffset * 1000); // Add timezone offset
-                                const hourDate = new Date(locationTime);
-                                const timeString = hourDate.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
+                                const hourDate = new Date(utcTime);
+                                const timeString = hourDate.toLocaleTimeString('en-US', { 
+                                    hour: 'numeric', 
+                                    hour12: true,
+                                    timeZone: timezone
+                                });
                                 return `
                                     <div class="hourly-item">
                                         <div class="hourly-time">${timeString}</div>
