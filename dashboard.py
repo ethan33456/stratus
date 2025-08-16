@@ -1114,7 +1114,7 @@ def weather_dashboard():
                 <h3>8-Day Forecast</h3>
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <p id="location-display">Detecting your location...</p>
-                    <button id="save-location-btn" class="save-location-btn" style="display: none;">💾 Save Location</button>
+                    <button id="save-location-btn" class="save-location-btn" style="display: none;">Save Location</button>
                 </div>
             </div>
             <div id="forecast-content">
@@ -2134,7 +2134,7 @@ def weather_dashboard():
                 return;
             }
 
-            const location = currentWeatherData.data.location;
+            const location = currentWeatherData.location;
             
             try {
                 const response = await fetch('/api/locations/save', {
