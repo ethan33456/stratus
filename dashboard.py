@@ -1599,11 +1599,17 @@ def weather_dashboard():
             // Display hourly forecast (12 hours)
             const hourlyForecastContent = document.getElementById('hourly-forecast-content');
             if (forecast && forecast.hourly) {
+                // Get timezone offset from the weather data
+                const timezoneOffset = data.timezone_offset || 0;
+                
                 hourlyForecastContent.innerHTML = `
                     <div class="hourly-scroll">
                         <div class="hourly-grid">
                             ${forecast.hourly.map(hour => {
-                                const hourDate = new Date(hour.dt * 1000);
+                                // Convert UTC timestamp to location's timezone
+                                const utcTime = hour.dt * 1000; // Convert to milliseconds
+                                const locationTime = utcTime + (timezoneOffset * 1000); // Add timezone offset
+                                const hourDate = new Date(locationTime);
                                 const timeString = hourDate.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
                                 return `
                                     <div class="hourly-item">
